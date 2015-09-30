@@ -1,0 +1,24 @@
+
+
+{
+	"Devices": [{
+		"Type": "Extended color light",
+		"Components" : [{
+			"DeviceComponentId" : -1,
+			"ComponentName" : "on",
+			"Value" : null,
+			"Timestamp" :  null,
+			"Description" : "Schalter",
+			"Actor" : true
+		},
+		{
+			"DeviceComponentId" : -1,
+			"ComponentName" : "bri",
+			"Value" : null,
+			"Timestamp" :  null,
+			"Unit" : "%",
+			"Description" : "Helligkeit",
+			"Actor" : true 
+		}]
+	}]
+}

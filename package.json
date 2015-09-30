@@ -1,0 +1,12 @@
+{
+	"name": "boese-connector-hue",
+	"version": "0.1.0",
+	"private": true,
+	"description": "BOese Connector for Philips Hue",
+
+	"dependencies": {
+		"websocket": "1.0.X",
+		"node-hue-api": "1.1.X",
+		"jsonfile": "2.2.X"
+	}
+}
