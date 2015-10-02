@@ -7,9 +7,15 @@ var hue = require("node-hue-api"),
     HueApi = hue.HueApi,
     lightState = hue.lightState;
 
+var api = new HueApi(config.bridge.ipaddress, config.bridge.username);
+
+var state = lightState.create();
+
+var sequenceNr = 0;
+
 var displayError = function(err) {
 	if(err != null){
-		console.log(err);
+		console.log("Error: " + err);
 	}
 };
 
@@ -36,7 +42,7 @@ var saveDevices = function(){
 };
 
 var getDevices = function(cb2){
-	var api = new HueApi(config.bridge.ipaddress, config.bridge.username);
+	
 
 	//Create JSON Devices for Distribuert DeviceId = HUEId
 	var devices = function(result, cb) {
@@ -50,7 +56,7 @@ var getDevices = function(cb2){
 	   	messageSendDevices =  '{"Header":{'
 					+ '"MessageType":4,'
 					+ '"ConnectorId":' + config.distributor.ConnectorId + ','
-					+ '"SequenceNr":0,'
+					+ '"SequenceNr":'+ (sequenceNr + 1) +','
 					+ '"AcknowledgeNr":0,'
 					+ '"Status":0,'
 					+ '"Timestamp":' + timestamp.getTime()
@@ -92,6 +98,119 @@ var getDevices = function(cb2){
 	});
 };
 
+/**
+ * Serch the DeviceId from the device by HueID
+ *
+ * @param {integer} deviceId - The DeviceId from the Device.
+ * @return {integer} - Returns the DeviceName from the device.
+ */
+var convertDeviceIdToHueId = function(deviceId, cbHueId){
+	for(var i = 0; i < devices.Devices.length; i++){
+		if(devices.Devices[i].DeviceId == deviceId){
+			cbHueId(devices.Devices[i].HueId);
+			break;
+		}else{
+			displayError("No Device found with DeviceId: " + deviceId);
+		}
+	}
+};
+
+/**
+ * Serch the DeviceName from the device by DeviceId
+ *
+ * @param {integer} deviceId - The DeviceId from the Device.
+ * @return {string} - Returns the DeviceName from the device.
+ */
+var getDeviceName = function(deviceId, cbDeviceName){
+	for(var i = 0; i < devices.Devices.length; i++){
+		if(devices.Devices[i].DeviceId == deviceId){
+			cbDeviceName(devices.Devices[i].DeviceName);
+			break;
+		}else{
+			displayError("No Device found with DeviceId: " + deviceId);
+		}
+	}
+}; 
+
+/**
+ * Set the brightness from 0% to 100% (0% is not off) for a device
+ *
+ * @param {integer} deviceId - The DeviceId from the Device.
+ * @param {integer} brightness - The value for the brightness in %. Only values from 0 to 100.  
+ */
+var hueSetBrightness = function(deviceId, brightness){
+	var deviceName = getDeviceName(deviceId, function(deviceName){});
+
+	if(brightness >= 0 && brightness <= 100){
+		var hueId = convertDeviceIdToHueId(deviceId, function(hueId){});
+
+		api.setLightState(hueId, state.brightness(brightness), function(err, result) {
+			if (err) throw err;
+			displayResult("Set " + deviceName + " brightness: " + brightness + "%");	
+		});
+	}else{
+		displayError("Set " + deviceName + " brightness: Value not between 0 and 100: " + brightness);
+	}	
+};
+
+/**
+ * Get the brightness from 0% to 100% (0% is not off) for a device
+ *
+ * @param {integer} deviceId - The DeviceId from the Device.
+ * @return {integer} - The value for the brightness in %. Only values from 0 to 100.  
+ */
+var hueGetBrightness = function(devicesId, cbBrightness){
+	var hueId = convertDeviceIdToHueId(deviceId, function(hueId){});
+
+	api.lightStatus(hueId, function(err, result) {
+    	if (err) throw err;
+    	cbBrightness(result.state.bri);
+	});
+};
+
+/**
+ * Switch the device on or off
+ *
+ * @param {integer} deviceId - The DeviceId from the Device.
+ * @param {integer} stateSwitch - State to switch on or off.  
+ */
+var hueSetSwitch = function(deviceId, stateSwitch){
+	var deviceName = getDeviceName(deviceId, function(deviceName){});
+
+	if(stateSwitch){
+		var hueId = convertDeviceIdToHueId(deviceId, function(hueId){});
+
+		api.setLightState(hueId, state.on(), function(err, result) {
+			if (err) throw err;
+			displayResult("Switch " + deviceName + " on. ");	
+		});
+	}else if(stateSwitch == 0){
+		var hueId = convertDeviceIdToHueId(deviceId, function(hueId){});
+
+		api.setLightState(hueId, state.off(), function(err, result) {
+			if (err) throw err;
+			displayResult("Switch " + deviceName + " off. ");	
+		});
+	}else{
+		displayError("Switch " + deviceName + ": Value not 0 or 1: " + stateSwitch);
+	}	
+};
+
+/**
+ * Get the state from switch for a device
+ *
+ * @param {integer} deviceId - The DeviceId from the Device.
+ * @return {integer} - The state of the switch.
+ */
+var hueGetSwitch = function(devicesId, cbSwitch){
+	var hueId = convertDeviceIdToHueId(deviceId, function(hueId){});
+
+	api.lightStatus(hueId, function(err, result) {
+    	if (err) throw err;
+    	cbSwitch(result.state.on ? 1 : 0);
+	});
+};
+
 var setValue = function(message){
 	for (var i = 0; i < devices.Devices.length; i++){
 	    	//Search the same Device Id in message and devices
@@ -100,39 +219,29 @@ var setValue = function(message){
 
 			    	// Serach the components with the same DeviceComponentId
 			    	if (message.DeviceComponentId== devices.Devices[i].Components[j].DeviceComponentId){
-			    		var api = new HueApi(config.bridge.ipaddress, config.bridge.username);
-						var state = lightState.create();
 			    		switch(devices.Devices[i].Components[j].ComponentName) {
 	                		case "on":
-	                			if(message.Value == 1){
-	                				api.setLightState(devices.Devices[i].Components[j].HueId, state.on(), function(err, result) {
-   										if (err) throw err;
-   										console.log("Set " + devices.Devices[i].DeviceName + ": on");
-									});
-	                			}else if(message.Value == 0){
-	                				api.setLightState(devices.Devices[i].Components[j].HueId, state.off(), function(err, result) {
-   										if (err) throw err;
-   										console.log("Set " + devices.Devices[i].DeviceName + ": off");
-									});
-	                			}
-	                    		break;
-	                	case "bri":
-	                			api.setLightState(devices.Devices[i].Components[j].HueId, state.brightness(message.Value), function(err, result) {
-   									if (err) throw err;
-   									console.log("Set " + devices.Devices[i].DeviceName + " brightness: " + message.Value + "%");
-								});
+	                			hueGetSwitch(message.DeviceId, message.Value);
+	                		case "bri":
+	                			hueSetBrightness(message.DeviceId, message.Value);
 	                    		break;
 	                    	}
 			    		//Component found, end for
-			    		j = devices.Devices[i].Components.length;
+			    		break;
 			    	}	
 		    	}
 		    	//Device found, end for
-		    	i = devices.Devices.length;
+		    	break;
 	   		 }
 	    }
 };
 
+/**
+ * Build the JSON Message with the Components
+ *
+ * @param deviceID {integer} The deviceId.
+ * @return {string} Returns the JSON Message.
+ */
 var getComponents = function(deviceId, cb){
 	var api = new HueApi(config.bridge.ipaddress, config.bridge.username);
 
@@ -174,7 +283,7 @@ var getComponents = function(deviceId, cb){
 	    		var messageSendComponents =  '{"Header":{'
 					+ '"MessageType":7,'
 					+ '"ConnectorId":' + config.distributor.ConnectorId + ','
-					+ '"SequenceNr":0,'
+					+ '"SequenceNr":' + (sequenceNr + 1) +','
 					+ '"AcknowledgeNr":0,'
 					+ '"Status":0,'
 					+ '"Timestamp":' + timestamp + '},'
@@ -311,6 +420,8 @@ var connect = function(){
 	        if (message.type === 'utf8') {
 
 	            var jsonMessage = JSON.parse(message.utf8Data);
+	            //sequenceNr = jsonMessage.Header.SequenceNr + 1;
+	            sequenceNr++;
 
 	            //Check receives messages
 	            switch(jsonMessage.Header.MessageType) {
@@ -376,7 +487,7 @@ var connect = function(){
 	});
 
 	//Connect to Distributor
-	client.connect('ws://'+config.distributor.ipaddress+':'+config.distributor.port+'/events/', null, null, null, null);
+	client.connect('ws://'+config.distributor.ipaddress+':'+config.distributor.port+'/events/', null, null, null, {closeTimeout :5000000});
 };
 
 var checkUserConfig = function (){
@@ -411,5 +522,5 @@ var checkIpaddress = function(){
 		checkUserConfig();
 	}
 };
-
+//hueSetBrightness(12, 80);
 checkIpaddress();
