@@ -7,6 +7,7 @@
 	"dependencies": {
 		"websocket": "1.0.X",
 		"node-hue-api": "1.1.X",
-		"jsonfile": "2.2.X"
+		"jsonfile": "2.2.X",
+		"json-query": "1.5.X"
 	}
 }
