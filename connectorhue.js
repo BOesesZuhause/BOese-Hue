@@ -333,7 +333,8 @@ var setValue = function(message){
 	    	for(var j = 0; j < devices.Devices[i].Components.length; j++){
 
 		    	// Serach the components with the same DeviceComponentId
-		    	if (message.DeviceComponentId== devices.Devices[i].Components[j].DeviceComponentId){
+		    	if (message.DeviceComponentId == devices.Devices[i].Components[j].DeviceComponentId){
+		    		console.log("setValue: " +devices.Devices[i].Components[j].ComponentName);
 		    		switch(devices.Devices[i].Components[j].ComponentName) {
                 		case "on":
                 			hueSetSwitch(message.DeviceId, message.Value);
@@ -341,7 +342,7 @@ var setValue = function(message){
                 		case "bri":
                 			hueSetBrightness(message.DeviceId, message.Value);
                     		break;
-                    	//}
+                    	
                     	case "xy":
                 			hueSetColor(message.DeviceId, message.Value);
                     		break;
@@ -357,7 +358,7 @@ var setValue = function(message){
 };
 
 var getValue = function (deviceId, deviceComponentId, cbValue){
-	switch(JSPath.apply('.Devices.Components{.DeviceComponentId === ' + deviceComponentId + '}', devices).Name) {
+	switch(JSPath.apply('.Devices.Components{.DeviceComponentId === ' + deviceComponentId + '}.ComponentName', devices)[0]) {
 		case "on":
 			hueGetSwitch(deviceId, function(value){
 				cbValue(value);
@@ -374,7 +375,7 @@ var getValue = function (deviceId, deviceComponentId, cbValue){
 			});
     		break;
     	default:
-    		displayError("get Value: " + JSPath.apply('.Devices.Components{.DeviceComponentId === ' + deviceComponentId + '}', devices).Name);
+    		displayError("getValue: " + JSPath.apply('.Devices.Components{.DeviceComponentId === ' + deviceComponentId + '}.ComponentName', devices)[0]);
     	}	    	
 };
 
@@ -384,7 +385,7 @@ var boeseRequestConnection = function(cbMessageRequerstConnection) {
 	var messageRequerstConnection =  '{'
 			+ '"Header":{'
 			+ '"MessageType":1,'
-			+ '"ConnectorId":-1,'
+			+ '"ConnectorId":' + (config.distributor.ConnectorId ? config.distributor.ConnectorId : -1) + ','
 			+ '"Status":0,'
 			+ '"Timestamp":' + timestamp.getTime()
 			+ '},'
@@ -401,9 +402,24 @@ var boeseRequestConnection = function(cbMessageRequerstConnection) {
  */
 var boeseSendDevices = function(cbMessageSendDevices){
 
-	var newDevices = JSPath.apply('.Devices{.DeviceId === -1}', devices);
+	//var newDevices = JSPath.apply('.Devices{.DeviceId === -1}', devices);
 
-	if(Object.keys(newDevices).length){
+	// if(Object.keys(newDevices).length){
+	// 	var messageSendDevices = JSON.parse('{"Header":{'
+	// 				+ '"MessageType":4,'
+	// 				+ '"ConnectorId":' + config.distributor.ConnectorId + ','
+	// 				+ '"Status":0,'
+	// 				+ '"Timestamp":' + timestamp.getTime()
+	// 				+ '},'
+	// 				+ '"Devices":[]}');
+	// 	for(var i = 0; i < newDevices.length; i++){
+	// 		messageSendDevices.Devices.push({"DeviceName": newDevices[i].DeviceName, "DeviceId":-1});
+	// 	}
+	// 	cbMessageSendDevices(messageSendDevices);
+	// }else{
+	// 	cbMessageSendDevices(false);
+	// }
+		if(device.Devices.length){
 		var messageSendDevices = JSON.parse('{"Header":{'
 					+ '"MessageType":4,'
 					+ '"ConnectorId":' + config.distributor.ConnectorId + ','
@@ -411,8 +427,8 @@ var boeseSendDevices = function(cbMessageSendDevices){
 					+ '"Timestamp":' + timestamp.getTime()
 					+ '},'
 					+ '"Devices":[]}');
-		for(var i = 0; i < newDevices.length; i++){
-			messageSendDevices.Devices.push({"DeviceName": newDevices[i].DeviceName, "DeviceId":-1});
+		for(var i = 0; i < device.Devices.length; i++){
+			messageSendDevices.Devices.push({"DeviceName": device.Devices[i].DeviceName, "DeviceId":device.Devices[i].DeviceId});
 		}
 		cbMessageSendDevices(messageSendDevices);
 	}else{
@@ -420,16 +436,23 @@ var boeseSendDevices = function(cbMessageSendDevices){
 	}
 };
 
-var boeseSendValue =function(deviceId, deviceComponetId, cbMessageSendValue){
-	var messageSendValue =  '{"Header":{'
-		+ '"MessageType":9,'
-		+ '"ConnectorId":' + config.distributor.ConnectorId + ','
-		+ '"Status":0,'
-		+ '"Timestamp":' + timestamp.getTime() + '},'
-		+ '"DeviceId":' + deviceId + ',' 
-		+ '"DeviceComponentId":' + deviceComponetId + ',' 
-		+ '"Value":' + value + '}';
-	cbMessageSendValue(messageSendValue);
+var boeseSendValue = function(deviceId, deviceComponentId, cbMessageSendValue){
+	console.log("boeseSendValue: deviceComponetId" + deviceComponentId);
+
+	getValue(deviceId, deviceComponentId, function(value){
+	
+		var messageSendValue =  '{"Header":{'
+			+ '"MessageType":9,'
+			+ '"ConnectorId":' + config.distributor.ConnectorId + ','
+			+ '"Status":0,'
+			+ '"Timestamp":' + timestamp.getTime() + '},'
+			+ '"DeviceId":' + deviceId + ',' 
+			+ '"DeviceComponentId":' + deviceComponentId + ',' 
+			+ '"Value":' + value + '}';
+		cbMessageSendValue(messageSendValue);
+
+		console.log("Test:" +value+"\t"+messageSendValue);
+	});
 };
 
 /**
@@ -466,8 +489,8 @@ var getComponents = function(deviceId, cb){
 	    	//Check is a Config for the DeviceTyp set
 	    	if(configComponents.Devices[i].Type == result.type){
 
-	    		//Bulid component devies for id's
-	    		for(var j = 0; j <configComponents.Devices[i].Components.length; j++){
+	    		//Bulid component devices for id's
+	    		for(var j = 0; j < configComponents.Devices[i].Components.length; j++){
 
 					components += '{'
 						+ '"DeviceComponentId":' + JSON.stringify(configComponents.Devices[i].Components[j].DeviceComponentId) + ','
@@ -545,7 +568,7 @@ var connect = function(){
 	    		devices.Devices[i].DeviceId = message.Devices[0].DeviceId;
 
 	    		// Device found, end for
-	    		i = devices.Devices.length;
+	    		break;
 	    		//saveDevices();
 	    	}
 	    }
@@ -568,7 +591,7 @@ var connect = function(){
 			    	}	
 		    	}
 		    	//Device found, end for
-		    	i = devices.Devices.length;
+		    	break;
 	   		 }
 	    }
 
@@ -632,6 +655,7 @@ var connect = function(){
                     case 9:
                     	console.log("MessageType: SendValue");
                         setValue(jsonMessage, function(){
+                        	console.log("boeseSendValue");
                         	boeseSendValue(jsonMessage.DeviceId, jsonMessage.DeviceComponentId, function(messageSendValue){
                         		if (connection.connected) {
 								connection.send(messageSendValue);
@@ -640,9 +664,17 @@ var connect = function(){
 
                         	});
                         });
+                        console.log("boeseSendValue");
+                        	boeseSendValue(jsonMessage.DeviceId, jsonMessage.DeviceComponentId, function(messageSendValue){
+                        		if (connection.connected) {
+								connection.send(messageSendValue);
+							}
+						    console.log("Send: '" + messageSendValue + "'");   
+
+                        	});
                     	break;
                   	case 10:
-                    	console.log("MessageType: ConfirmeValue");
+                    	console.log("MessageType: ConfirmValue");
                     	break;
                     case 11:
                     	console.log("MessageType: RequestValue");
