@@ -3,17 +3,20 @@
     {
       "DeviceName": "Hue Lamp 1",
       "HueId": 1,
-      "DeviceId": -1
+      "DeviceId": 3,
+      "Components": []
     },
     {
       "DeviceName": "Hue Lamp 2",
       "HueId": 2,
-      "DeviceId": -1
+      "DeviceId": 2,
+      "Components": []
     },
     {
       "DeviceName": "Hue Lamp 3",
       "HueId": 3,
-      "DeviceId": -1
+      "DeviceId": 1,
+      "Components": []
     }
   ]
 }

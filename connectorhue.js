@@ -2,8 +2,8 @@ var config = require('./config.json');
 var devices = require('./devices.json');
 
 var WebSocketClient = require('websocket').client;
-var jsonQuery = require('json-query');
 var JSPath = require('jspath');
+
 
 var hue = require("node-hue-api"),
     HueApi = hue.HueApi,
@@ -14,6 +14,8 @@ var api = new HueApi(config.bridge.ipaddress, config.bridge.username);
 var state = lightState.create();
 
 var timestamp = new Date();
+
+var color2 = 0;
 
 var displayError = function(err) {
 	if(err != null){
@@ -44,61 +46,6 @@ var saveDevices = function(){
 	console.log("Devices saved: "+file);
 };
 
-var getDevices = function(cb2){
-	
-
-	//Create JSON Devices for Distribuert DeviceId = HUEId
-	var devices = function(result, cb) {
-		
-		//Save Devices 
-		devices =  '{"Devices":[';
-
-	    var timestamp = new Date();
-
-	    //Build JSON MessageType: SendDevices
-	   	messageSendDevices =  '{"Header":{'
-					+ '"MessageType":4,'
-					+ '"ConnectorId":' + config.distributor.ConnectorId + ','
-					+ '"Status":0,'
-					+ '"Timestamp":' + timestamp.getTime()
-					+ '},'
-					+ '"Devices":[';
-
-		for(var i = 0; i < result.lights.length; i++){
-			messageSendDevices += '{'
-						+ '"DeviceName":"' + result.lights[i].name+'",'
-						+ '"DeviceId":-1'
-						+ '},';
-
-			devices += '{'
-						+ '"DeviceName":"' + result.lights[i].name+'",'
-						+ '"HueId":' + result.lights[i].id + ','
-						+ '"DeviceId":-1,'
-						+ '"Components":0'
-						+ '},';
-		}
-		//Delete last "," from string messageSendDevices
-		messageSendDevices = messageSendDevices.substr(0,messageSendDevices.length-1);
-		messageSendDevices += ']}';
-
-		//Parse String messageSendDevices to JSON 
-		messageSendDevices = JSON.parse(messageSendDevices);
-		cb(messageSendDevices);
-
-		//Delete last "," from string devices
-		devices = devices.substr(0,devices.length-1);
-		devices += ']}';
-	};
-
-	//Geräte abfragen und messageSendDevies bauen aufrufen
- 	api.lights(function(err, lights) {
-   		if (err) throw err;
-    	devices(lights, function(messageSendDevices){
-    		cb2(messageSendDevices);
-    	});
-	});
-};
-
 /**
  * Serch the DeviceId from the device by HueID
  *
@@ -106,20 +53,26 @@ var getDevices = function(cb2){
  * @return {integer} - Returns the DeviceName from the device.
  */
 var convertDeviceIdToHueId = function(deviceId, cbHueId){
-	for(var i = 0; i < devices.Devices.length; i++){
-		if(devices.Devices[i].DeviceId == deviceId){
-			cbHueId(devices.Devices[i].HueId);
-			break;
-		}
-	}
+	cbHueId(JSPath.apply('.Devices.{.DeviceId === ' + deviceId + '}.HueId', devices)[0]);
+
 };
 
-var hueGetDevices = function(){
+/**
+ * Serch the deviceComponentId from the device by ComponentName
+ *
+ * @param {integer} deviceComponentId - The DeviceId from the Device.
+ * @return {integer} - Returns the ComponentName from the device.
+ */
+var convertDeviceComponentIdToHueId = function(deviceComponentId, cbComponentName){
+	cbComponentName(JSPath.apply('.Devices.Components{.DeviceComponentId === ' + deviceComponentId + '}.ComponentName', devices)[0]);
+};
+
+
+var hueGetDevices = function(cbDevices){
 	api.lights(function(err, device) {
    		if (err) throw err;
-
-		if(devices == null){
-			devices =  '{"Devices":[]}';
+		if(devices.Devices === undefined) {
+			devices = JSON.parse('{"Devices":[]}');
 			var noKnowDevices = true;
 		}else{
 			var noKnowDevices = false;
@@ -127,34 +80,38 @@ var hueGetDevices = function(){
 
 		for(var i = 0; i < device.lights.length; i++){
 			if(noKnowDevices){
-				devices.Devices.push({"DeviceName": device.lights[i].name, "HueId":device.lights[i].id,"DeviceId":-1,"Components":[]});
+				devices.Devices.push({"DeviceName": device.lights[i].name, "HueId": parseInt(device.lights[i].id), "DeviceId": -1, "Components":[]});
 			}else{
 				// Checks if HueID available in devices, 
-				if(!jsonQuery('Devices[HueId='+device.lights[i].id+']', {data: devices}).value){
-					devices.Devices.push({"DeviceName": device.lights[i].name, "HueId":device.lights[i].id,"DeviceId":-1,"Components":[]});
+				if(!JSPath.apply('.Devices.{.HueId === ' + device.lights[i].id + '}', devices)[0]){
+					devices.Devices.push({"DeviceName": device.lights[i].name, "HueId": parseInt(device.lights[i].id), "DeviceId":-1, "Components":[]});	
 				} 
 			}
 		}
+		cbDevices(devices);
 		saveDevices();  	
 	});
 };
 
-var hueGetComponents = function(){
-	// api.lights(function(err, device) {
- //   		if (err) throw err;
-
-	// 	for(var i = 0; i < device.lights.length; i++){
-	// 		if(noKnowDevices){
-	// 			devices.Devices.push({"DeviceName": device.lights[i].name, "HueId":device.lights[i].id,"DeviceId":-1,"Components":[]});
-	// 		}else{
-	// 			// Checks if HueID available in devices, 
-	// 			if(!jsonQuery('Devices[HueId='+device.lights[i].id+']', {data: devices}).value){
-	// 				devices.Devices.push({"DeviceName": device.lights[i].name, "HueId":device.lights[i].id,"DeviceId":-1,"Components":[]});
-	// 			} 
-	// 		}
-	// 	}
-	// 	saveDevices();  	
-	// });
+var hueGetComponents = function(deviceId, cbDevices){
+	convertDeviceIdToHueId(deviceId, function(hueId){
+		api.lightStatus(hueId, function(err, result) {
+	   		if (err) throw err;
+	   		if(!JSPath.apply('.Devices.{.DeviceId === ' + deviceId + '}.Components', devices)[0]){
+		   	 	var configComponents = require('./config/configComponents.json');
+		   	 	for(var i = 0; i < devices.Devices.length; i++){
+					if(devices.Devices[i].DeviceId == deviceId){
+						for(var j = 0; j < JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents).length; j++){
+							devices.Devices[i].Components.push({"DeviceComponentId": -1, "ComponentName": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents)[j], "Description": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Description', configComponents)[j], "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Unit', configComponents)[j], "Actor": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Actor', configComponents)[j]});
+						}
+					break;
+					}
+				}
+			}
+			cbDevices(devices);
+		});
+	
+	});
 };
 
 /**
@@ -164,12 +121,7 @@ var hueGetComponents = function(){
  * @return {string} - Returns the DeviceName from the device.
  */
 var getDeviceName = function(deviceId, cbDeviceName){
-	for(var i = 0; i < devices.Devices.length; i++){
-		if(devices.Devices[i].DeviceId == deviceId){
-			cbDeviceName(devices.Devices[i].DeviceName);
-			break;
-		}
-	}
+	cbDeviceName(JSPath.apply('.Devices.{.DeviceId === ' + deviceId + '}.DeviceName', devices)[0]);
 }; 
 
 /**
@@ -178,19 +130,20 @@ var getDeviceName = function(deviceId, cbDeviceName){
  * @param {integer} deviceId - The DeviceId from the Device.
  * @param {integer} brightness - The value for the brightness in %. Only values from 0 to 100.  
  */
-var hueSetBrightness = function(deviceId, brightness){
+var hueSetBrightness = function(deviceId, brightness, cbDone){
 	getDeviceName(deviceId, function(deviceName){
 		if(brightness >= 0 && brightness <= 100){
 			convertDeviceIdToHueId(deviceId, function(hueId){
 				api.setLightState(hueId, state.brightness(brightness), function(err, result) {
 					if (err) throw err;
-					displayResult("Set " + deviceName + " brightness: " + brightness + "%");	
+					displayResult("Set " + deviceName + " brightness: " + brightness + "%");
+					cbDone(true);	
 				});
 			});
 		}else{
 			displayError("Set " + deviceName + " brightness: Value not between 0 and 100: " + brightness);
 		}
-	});	
+	});		
 };
 
 /**
@@ -203,7 +156,7 @@ var hueGetBrightness = function(deviceId, cbBrightness){
 	convertDeviceIdToHueId(deviceId, function(hueId){
 		api.lightStatus(hueId, function(err, result) {
 	    	if (err) throw err;
-	    	cbBrightness(result.state.bri);
+	    	cbBrightness(Math.round(result.state.bri/2.54));
 		});
 	});
 };
@@ -214,7 +167,7 @@ var hueGetBrightness = function(deviceId, cbBrightness){
  * @param {integer} deviceId - The DeviceId from the Device.
  * @param {integer} color - The value for the color in rgb.  
  */
-var hueSetColor = function(deviceId, color){
+var hueSetColor = function(deviceId, color, cbDone){
 	getDeviceName(deviceId, function(deviceName){
 		if(color >= 0 && color <= 16777215){
 			//Convert color to r, g, b
@@ -224,62 +177,51 @@ var hueSetColor = function(deviceId, color){
 			convertDeviceIdToHueId(deviceId, function(hueId){
 				api.setLightState(hueId, state.rgb(r, g, b), function(err, result) {
 					if (err) throw err;
-					displayResult("Set " + deviceName + " color: R: " + r + " G: " + g + " B:" + b);	
+					displayResult("Set " + deviceName + " color: R: " + r + " G: " + g + " B:" + b);
+					color2 = color;
+					console.log("Farbe: " + color);
+					cbDone(true);	
 				});
 			});
 		}else{
 			displayError("Set " + deviceName + " color: Value not between 0 and 16777215: " + color);
 		}
-		hueGetColor(deviceId, function(value){
-			boeseSendValue(deviceComponentId, value);
-		});
 	});	
 };
 
 /**
- * Get the color 
+ * Get the color from the Hue Lamp
  *
  * @param {integer} deviceId - The DeviceId from the Device.
  * @return {integer} - The value for the color in rgb  
  */
 var hueGetColor = function(deviceId, cbColor){
-	convertDeviceIdToHueId(deviceId, function(hueId){
-		api.lightStatus(hueId, function(err, result) {
-	    	if (err) throw err;
-			var x = result.state.xy[0]; // the given x value
-			var y = result.state.xy[1]; // the given y value
-			var z = 1.0 - x - y; 
-			var Y = (result.state.bri/2.55); // The given brightness value
-			var X = (Y / y) * x;  
-			var Z = (Y / y) * z;
+	// convertDeviceIdToHueId(deviceId, function(hueId){
+	// 	api.lightStatus(hueId, function(err, result) {
+	//     	if (err) throw err;
+	// 		var x = result.state.xy[0]; // the given x value
+	// 		var y = result.state.xy[1]; // the given y value
+	// 		var z = 1.0 - x - y; 
+	// 		var Y = (result.state.bri/2.55); // The given brightness value
+	// 		var X = (Y / y) * x;  
+	// 		var Z = (Y / y) * z;
 
-			//Convert to RGB using Wide RGB D65 conversion
-			var r = X * 1.612 - Y * 0.203 - Z * 0.302;
-			var g = -X * 0.509 + Y * 1.412 + Z * 0.066;
-			var b = X * 0.026 - Y * 0.072 + Z * 0.962;
+	// 		//Convert to RGB using Wide RGB D65 conversion
+	// 		var r = X * 1.612 - Y * 0.203 - Z * 0.302;
+	// 		var g = -X * 0.509 + Y * 1.412 + Z * 0.066;
+	// 		var b = X * 0.026 - Y * 0.072 + Z * 0.962;
 
-			//Apply reverse gamma correction
-			r = r <= 0.0031308 ? 12.92 * r : (1.0 + 0.055) * Math.pow(r, (1.0 / 2.4)) - 0.055;
-			g = g <= 0.0031308 ? 12.92 * g : (1.0 + 0.055) * Math.pow(g, (1.0 / 2.4)) - 0.055;
-			b = b <= 0.0031308 ? 12.92 * b : (1.0 + 0.055) * Math.pow(b, (1.0 / 2.4)) - 0.055;
+	// 		//Apply reverse gamma correction
+	// 		r = r <= 0.0031308 ? 12.92 * r : (1.0 + 0.055) * Math.pow(r, (1.0 / 2.4)) - 0.055;
+	// 		g = g <= 0.0031308 ? 12.92 * g : (1.0 + 0.055) * Math.pow(g, (1.0 / 2.4)) - 0.055;
+	// 		b = b <= 0.0031308 ? 12.92 * b : (1.0 + 0.055) * Math.pow(b, (1.0 / 2.4)) - 0.055;
+	   
+	// 		var rgb = (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b);
 
-			
-		        
-		        // var cap = function (x) {
-		        //     return Math.max(0, Math.min(1, x));
-		        // };
-		        // return {
-		        //     r: cap(r),
-		        //     g: cap(g),
-		        //     b: cap(b)
-		        // };
-		   
-
-			var rgb = (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b);
-
-	    	cbColor(rgb);
-		});
-	});
+	//     	cbColor(rgb);
+	// 	});
+	// });
+	cbColor(color2);
 };
 
 /**
@@ -288,27 +230,30 @@ var hueGetColor = function(deviceId, cbColor){
  * @param {integer} deviceId - The DeviceId from the Device.
  * @param {integer} stateSwitch - State to switch on or off.  
  */
-var hueSetSwitch = function(deviceId, stateSwitch){
+var hueSetSwitch = function(deviceId, stateSwitch, cbDone){
 	getDeviceName(deviceId, function(deviceName){
 		if(stateSwitch){
 			convertDeviceIdToHueId(deviceId, function(hueId){
 				api.setLightState(hueId, state.on(), function(err, result) {
 					if (err) throw err;
-					displayResult("Switch " + deviceName + " on. ");	
+					displayResult("Switch " + deviceName + " on. ");
+					cbDone(true);	
 				});
 			});
 		}else if(stateSwitch == 0){
 			convertDeviceIdToHueId(deviceId, function(hueId){
 				api.setLightState(hueId, state.off(), function(err, result) {
 					if (err) throw err;
-					displayResult("Switch " + deviceName + " off. ");	
+					displayResult("Switch " + deviceName + " off. ");
+					cbDone(true);	
 				});
 			})
 			
 		}else{
 			displayError("Switch " + deviceName + ": Value not 0 or 1: " + stateSwitch);
 		}
-	});	
+	});
+		
 };
 
 /**
@@ -322,39 +267,38 @@ var hueGetSwitch = function(deviceId, cbSwitch){
 		api.lightStatus(hueId, function(err, result) {
 	    	if (err) throw err;
 	    	cbSwitch(result.state.on ? 1 : 0);
+	    	
 		});
 	});
 };
 
-var setValue = function(message){
-	for (var i = 0; i < devices.Devices.length; i++){
-    	//Search the same Device Id in message and devices
-    	if(message.DeviceId == devices.Devices[i].DeviceId){
-	    	for(var j = 0; j < devices.Devices[i].Components.length; j++){
-
-		    	// Serach the components with the same DeviceComponentId
-		    	if (message.DeviceComponentId == devices.Devices[i].Components[j].DeviceComponentId){
-		    		console.log("setValue: " +devices.Devices[i].Components[j].ComponentName);
-		    		switch(devices.Devices[i].Components[j].ComponentName) {
-                		case "on":
-                			hueSetSwitch(message.DeviceId, message.Value);
-                			break;
-                		case "bri":
-                			hueSetBrightness(message.DeviceId, message.Value);
-                    		break;
-                    	
-                    	case "xy":
-                			hueSetColor(message.DeviceId, message.Value);
-                    		break;
-                    	}
-		    		//Component found, end for
-		    		break;
-		    	}	
-	    	}
-	    	//Device found, end for
-	    	break;
-   		 }
-	}
+/**
+ * Matching the DeviceComponentId to the Hue Device an call the function tu set the value
+ *
+ * @param {integer} deviceId - The DeviceId from the Device.
+ * @param {integer} deviceComponentId - The DeviceComponentId from the Device.
+ * 
+ */
+var setValue = function(deviceId, deviceComponentId, value, cbDone){
+	switch(JSPath.apply('.Devices.Components{.DeviceComponentId === ' + deviceComponentId + '}.ComponentName', devices)[0]) {
+		case "on":
+			hueSetSwitch(deviceId, value, function(done){
+				cbDone(done);
+			});
+			break;
+		case "bri":
+			hueSetBrightness(deviceId, value, function(done){
+				cbDone(done);
+			});
+    		break;
+    	case "xy":
+			hueSetColor(deviceId,value, function(done){
+				cbDone(done);
+			});
+    		break;
+    	default:
+    		displayError("setValue: " + JSPath.apply('.Devices.Components{.DeviceComponentId === ' + deviceComponentId + '}.ComponentName', devices)[0]);
+    }
 };
 
 var getValue = function (deviceId, deviceComponentId, cbValue){
@@ -376,12 +320,10 @@ var getValue = function (deviceId, deviceComponentId, cbValue){
     		break;
     	default:
     		displayError("getValue: " + JSPath.apply('.Devices.Components{.DeviceComponentId === ' + deviceComponentId + '}.ComponentName', devices)[0]);
-    	}	    	
+    }	    	
 };
 
 var boeseRequestConnection = function(cbMessageRequerstConnection) {
-
-	//Build JSON for RequerstConnection 
 	var messageRequerstConnection =  '{'
 			+ '"Header":{'
 			+ '"MessageType":1,'
@@ -389,9 +331,12 @@ var boeseRequestConnection = function(cbMessageRequerstConnection) {
 			+ '"Status":0,'
 			+ '"Timestamp":' + timestamp.getTime()
 			+ '},'
-			+ '"ConnectorName":"BOese-Phillips-HUE"'
-			+ '}';
-
+			+ '"ConnectorName":"BOese-Phillips-HUE"';
+			if(config.distributor.Password){
+				messageRequerstConnection += ',"Password":"' + config.distributor.Password + '"}';
+			}else{
+				messageRequerstConnection += '}';
+			}
 	cbMessageRequerstConnection(messageRequerstConnection);
 };
 
@@ -401,46 +346,91 @@ var boeseRequestConnection = function(cbMessageRequerstConnection) {
  * @return {objekt} - The JSON SendDevices message
  */
 var boeseSendDevices = function(cbMessageSendDevices){
-
-	//var newDevices = JSPath.apply('.Devices{.DeviceId === -1}', devices);
-
-	// if(Object.keys(newDevices).length){
-	// 	var messageSendDevices = JSON.parse('{"Header":{'
-	// 				+ '"MessageType":4,'
-	// 				+ '"ConnectorId":' + config.distributor.ConnectorId + ','
-	// 				+ '"Status":0,'
-	// 				+ '"Timestamp":' + timestamp.getTime()
-	// 				+ '},'
-	// 				+ '"Devices":[]}');
-	// 	for(var i = 0; i < newDevices.length; i++){
-	// 		messageSendDevices.Devices.push({"DeviceName": newDevices[i].DeviceName, "DeviceId":-1});
-	// 	}
-	// 	cbMessageSendDevices(messageSendDevices);
-	// }else{
-	// 	cbMessageSendDevices(false);
-	// }
-		if(device.Devices.length){
-		var messageSendDevices = JSON.parse('{"Header":{'
-					+ '"MessageType":4,'
-					+ '"ConnectorId":' + config.distributor.ConnectorId + ','
-					+ '"Status":0,'
-					+ '"Timestamp":' + timestamp.getTime()
-					+ '},'
-					+ '"Devices":[]}');
-		for(var i = 0; i < device.Devices.length; i++){
-			messageSendDevices.Devices.push({"DeviceName": device.Devices[i].DeviceName, "DeviceId":device.Devices[i].DeviceId});
+	hueGetDevices(function(devices) {
+		if(devices.Devices.length){
+			var messageSendDevices = JSON.parse('{"Header":{'
+						+ '"MessageType":4,'
+						+ '"ConnectorId":' + config.distributor.ConnectorId + ','
+						+ '"Status":0,'
+						+ '"Timestamp":' + timestamp.getTime()
+						+ '},'
+						+ '"Devices":[]}');
+			for(var i = 0; i < devices.Devices.length; i++){
+				messageSendDevices.Devices.push({"DeviceName": devices.Devices[i].DeviceName, "DeviceId":devices.Devices[i].DeviceId});
+			}
+			cbMessageSendDevices(messageSendDevices);
+		}else{
+			cbMessageSendDevices(false);
 		}
-		cbMessageSendDevices(messageSendDevices);
-	}else{
-		cbMessageSendDevices(false);
-	}
+	});	
+};
+
+/**
+ * Get the message SendDevices for the distributor
+ *
+ * @return {objekt} - The JSON SendDevices message
+ */
+var boeseSendComponents = function(deviceId, cbMessageSendComponents){
+	hueGetComponents(deviceId, function(devices) {
+
+		for(var i = 0; i < devices.Devices.length; i++){
+			if(devices.Devices[i].DeviceId == deviceId){
+
+				var messageSendComponents = JSON.parse('{"Header":{'
+						+ '"MessageType":7,'
+						+ '"ConnectorId":' + config.distributor.ConnectorId + ','
+						+ '"Status":0,'
+						+ '"Timestamp":' + timestamp.getTime()
+						+ '},'
+						+ '"DeviceId":' + deviceId + ',' 
+						+ '"Components":' + JSON.stringify(devices.Devices[i].Components)
+						+ '}');
+
+				for(var j = 0; j < devices.Devices[i].Components.length; j++){
+
+					
+				// 	switch(devices.Devices[i].Components[j].ComponentName) {
+				// 		case "on":
+				// 			console.log("Valiue: "+hueGetSwitch2(deviceId));
+				// 			messageSendComponents.Components[j].Value = hueGetSwitch2(deviceId);
+				// 			// hueGetSwitch(deviceId, function(value){
+				// 			// 	console.log("test" +value);
+				// 			// 	//var value2=value;
+				// 			// 	//messageSendComponents.Components[j]. = 1;
+				// 			// 	messageSendComponents.Components[j].Timestamp = timestamp.getTime();
+				// 			// });
+				// 			break;
+				// // 		case "bri":
+				// // 			hueGetBrightness(deviceId, function(value){
+				// // 				var value2=value;
+				// // 				//messageSendComponents.Components[j].Value = 2;
+				// // 			});
+				// //     		break;
+				// //     	case "xy":
+				// // 			hueGetColor(deviceId, function(value){
+				// // 				var value2=value;
+				// // 				//messageSendComponents.Components[j].Value = 3;
+				// // 			});
+				// //     		break;
+				//     	default:
+				//     		displayError("todo" +j);
+				//     }
+				// //     messageSendComponents.Components[j].Value = value2;
+				  	messageSendComponents.Components[j].Value = 0;
+					messageSendComponents.Components[j].Timestamp = timestamp.getTime();
+				 }
+				cbMessageSendComponents(JSON.stringify(messageSendComponents));
+				break;	
+			}
+		}
+
+		
+			
+	});	
 };
 
 var boeseSendValue = function(deviceId, deviceComponentId, cbMessageSendValue){
-	console.log("boeseSendValue: deviceComponetId" + deviceComponentId);
-
 	getValue(deviceId, deviceComponentId, function(value){
-	
 		var messageSendValue =  '{"Header":{'
 			+ '"MessageType":9,'
 			+ '"ConnectorId":' + config.distributor.ConnectorId + ','
@@ -448,104 +438,9 @@ var boeseSendValue = function(deviceId, deviceComponentId, cbMessageSendValue){
 			+ '"Timestamp":' + timestamp.getTime() + '},'
 			+ '"DeviceId":' + deviceId + ',' 
 			+ '"DeviceComponentId":' + deviceComponentId + ',' 
-			+ '"Value":' + value + '}';
-		cbMessageSendValue(messageSendValue);
-
-		console.log("Test:" +value+"\t"+messageSendValue);
-	});
-};
-
-/**
- * Build the JSON Message with the Components
- *
- * @param deviceID {integer} The deviceId.
- * @return {string} Returns the JSON Message.
- */
-var getComponents = function(deviceId, cb){
-	var api = new HueApi(config.bridge.ipaddress, config.bridge.username);
-
-	var devicesPoint = 0;
-
-	//Serach HueID for DeviceID
-	for(var i = 0; i < devices.Devices.length;i++){
-		if(devices.Devices[i].DeviceId == deviceId){
-			var hueId = devices.Devices[i].HueId;
-			devicesPoint = i;
-			break;
-		}
-	}
-
-	api.lightStatus(hueId, function(err, result) {
-    	if (err) throw err;
-
-	    var timestamp = new Date().getTime();
-	    var configComponents = require('./configComponents.json');
-
-	    //var components = '{"Components":[';
-	    var components = "[";
-
-	    for(var i = 0; i < configComponents.Devices.length; i++){
-
-	    	//Check is a Config for the DeviceTyp set
-	    	if(configComponents.Devices[i].Type == result.type){
-
-	    		//Bulid component devices for id's
-	    		for(var j = 0; j < configComponents.Devices[i].Components.length; j++){
-
-					components += '{'
-						+ '"DeviceComponentId":' + JSON.stringify(configComponents.Devices[i].Components[j].DeviceComponentId) + ','
-				        + '"ComponentName":' + JSON.stringify(configComponents.Devices[i].Components[j].ComponentName)
-				    	+ '},';
-				    }
-
-	    		// Bulid Send Components Message
-	    		var messageSendComponents =  '{"Header":{'
-					+ '"MessageType":7,'
-					+ '"ConnectorId":' + config.distributor.ConnectorId + ','
-					+ '"Status":0,'
-					+ '"Timestamp":' + timestamp + '},'
-					+ '"DeviceId":' + deviceId + ',' 
-					+ '"Components":' + JSON.stringify(configComponents.Devices[i].Components)
-					+ '}';
-
-				// Parse messageSendComponents to JSON object
-				messageSendComponents = JSON.parse(messageSendComponents);
-
-				// Set the state from component in JSON object
-				for (var i = 0; i < messageSendComponents.Components.length; i++){
-					var component = messageSendComponents.Components[i].ComponentName;
-			
-					//Replace true/false with 1/0
-					if(component == "on"){
-						if(result.state[component]){
-							messageSendComponents.Components[i].Value  = 1;
-						}else if(result.state[component] == false){
-							messageSendComponents.Components[i].Value  = 0;
-						}
-					}
-					//convert brightness in percentage
-					else if(component == "bri"){
-						messageSendComponents.Components[i].Value = Math.round(result.state[component]/2.55);
-					}else{
-						messageSendComponents.Components[i].Value = result.state[component];
-
-					}
-					messageSendComponents.Components[i].Timestamp = timestamp;
-				}
-	    	}
-	    	else{
-	    		console.log("Device type not on configComponents.json");
-	    	}
-		}
-		//Delete last "," from string components
-		components = components.substr(0,components.length-1);
-		components += ']';
-
-		//Add components to devices
-		devices.Devices[devicesPoint].Components = JSON.parse(components);
-
-		//Callback 
-		cb(JSON.stringify(messageSendComponents));
+			+ '"Value":' + value + ','
+			+ '"Timestamp":' + timestamp.getTime() + '}';
+		cbMessageSendValue(messageSendValue);		
 	});
 };
 
@@ -594,7 +489,6 @@ var connect = function(){
 		    	break;
 	   		 }
 	    }
-
 		saveDevices();
 	};
 
@@ -617,75 +511,85 @@ var connect = function(){
 
 	    connection.on('message', function(message) {
 	        if (message.type === 'utf8') {
+	        	
+		            var jsonMessage = JSON.parse(message.utf8Data);
 
-	            var jsonMessage = JSON.parse(message.utf8Data);
+					if(jsonMessage.Header.MessageType != undefined) {
 
-	            //Check receives messages
-	            switch(jsonMessage.Header.MessageType) {
-	                case 2:
-	                    console.log("MessageType: ConfirmConnection");
-	                        confirmConnection(jsonMessage);
-	                    break;
-	                case 3:
-	                    console.log("MessageType: RequestAllDevices");
-						getDevices(function(messageSendDevices) {
-							if (connection.connected) {
-								connection.send(JSON.stringify(messageSendDevices));
-						    	console.log("Send: '" + JSON.stringify(messageSendDevices) + "'");
-						    }    
-						});		                    
-						break;
-					case 5:
-                    	console.log("MessageType: ConfirmDevices");
-                        confirmDevices(jsonMessage);
-                    	break;
-                    case 6:
-                    	console.log("MessageType: RequestDeviceComponents");
-                        getComponents(jsonMessage.DeviceId,function(messageSendDevices) {
-                        	if (connection.connected) {
-								connection.send(messageSendDevices);
+		            //Check receives messages
+		            switch(jsonMessage.Header.MessageType) {
+		                case 2:
+		                    console.log("MessageType: ConfirmConnection");
+		                        confirmConnection(jsonMessage);
+		                    break;
+		                case 3:
+		                    console.log("MessageType: RequestAllDevices");
+							boeseSendDevices(function(messageSendDevices) {
+								if (connection.connected) {
+									connection.send(JSON.stringify(messageSendDevices));
+							    	console.log("Send: '" + JSON.stringify(messageSendDevices) + "'");
+							    }   
+							});		                    
+							break;
+						case 5:
+	                    	console.log("MessageType: ConfirmDevices");
+	                        confirmDevices(jsonMessage);
+	                    	break;
+	                    case 6:
+	                    	console.log("MessageType: RequestDeviceComponents");
+	                        boeseSendComponents(jsonMessage.DeviceId,function(messageSendDevices) {
+	                        	if (connection.connected) {
+									connection.send(messageSendDevices);
+								}
+							    console.log("Send: '" + messageSendDevices + "'");    
+							});
+	                    	break;
+	                    case 8:
+	                    	console.log("MessageType: ConfirmDeviceComponents");
+	                        confirmDeviceComponents(jsonMessage);
+	                    	break;
+	                    case 9:
+	                    	console.log("MessageType: SendValue");
+	                        setValue(jsonMessage.DeviceId, jsonMessage.DeviceComponentId, jsonMessage.Value, function(done){
+	                        	console.log("boeseSendValue");
+	                        	boeseSendValue(jsonMessage.DeviceId, jsonMessage.DeviceComponentId, function(messageSendValue){
+	                        		if (connection.connected) {
+									connection.send(messageSendValue);
+								}
+							    console.log("Send: '" + messageSendValue + "'");   
+
+	                        	});
+	                        });
+	       //                  console.log("boeseSendValue");
+	       //                  	boeseSendValue(jsonMessage.DeviceId, jsonMessage.DeviceComponentId, function(messageSendValue){
+	       //                  		if (connection.connected) {
+								// 	connection.send(messageSendValue);
+								// }
+							 //    console.log("Send: '" + messageSendValue + "'");   
+
+	       //                  	});
+	                    	break;
+	                  	case 10:
+	                    	console.log("MessageType: ConfirmValue");
+	                    	break;
+	                    case 11:
+	                    	console.log("MessageType: RequestValue");
+	                    	//Todo
+	                    	break;
+	                    case 120:
+	                    	console.log("MessageType: HeartBeat");
+					       	if (connection.connected) {
+								connection.send(JSON.stringify(jsonMessage));
 							}
-						    console.log("Send: '" + messageSendDevices + "'");    
-						});	
-                    	break;
-                    case 8:
-                    	console.log("MessageType: ConfirmDeviceComponents");
-                        confirmDeviceComponents(jsonMessage);
-                    	break;
-                    case 9:
-                    	console.log("MessageType: SendValue");
-                        setValue(jsonMessage, function(){
-                        	console.log("boeseSendValue");
-                        	boeseSendValue(jsonMessage.DeviceId, jsonMessage.DeviceComponentId, function(messageSendValue){
-                        		if (connection.connected) {
-								connection.send(messageSendValue);
-							}
-						    console.log("Send: '" + messageSendValue + "'");   
+							console.log("Send: '" + JSON.stringify(jsonMessage) + "'");  
+	                    	break;
+		                default:
+		                    console.log("MessageType unknow: ");
+		            }
 
-                        	});
-                        });
-                        console.log("boeseSendValue");
-                        	boeseSendValue(jsonMessage.DeviceId, jsonMessage.DeviceComponentId, function(messageSendValue){
-                        		if (connection.connected) {
-								connection.send(messageSendValue);
-							}
-						    console.log("Send: '" + messageSendValue + "'");   
-
-                        	});
-                    	break;
-                  	case 10:
-                    	console.log("MessageType: ConfirmValue");
-                    	break;
-                    case 11:
-                    	console.log("MessageType: RequestValue");
-                    	//Todo
-                    	break;
-	                default:
-	                    console.log("MessageType unknow: ");
-	            }
-
-	            //Get received message on consol
-	           	console.log("Received: '" + message.utf8Data + "'");
+		            //Get received message on consol
+		           	console.log("Received: '" + message.utf8Data + "'");
+		    	}
 	        }
 
 	    });
@@ -738,4 +642,11 @@ var checkIpaddress = function(){
 };
 checkIpaddress();
 
-//boeseSendDevices();
+
+
+// boeseSendComponents(27,function(messageSendDevices) {
+							
+// 					    	console.log(messageSendDevices);
+						  
+//  						});		
+
