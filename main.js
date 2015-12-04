@@ -1,5 +1,5 @@
-var config = require('./config.json');
-var devices = require('./devices.json');
+var config = require('./config/config.json');
+var devices = require('./storage/devices.json');
 
 var WebSocketClient = require('websocket').client;
 var JSPath = require('jspath');
@@ -13,8 +13,6 @@ var api = new HueApi(config.bridge.ipaddress, config.bridge.username);
 
 var state = lightState.create();
 
-var timestamp = new Date();
-
 var color2 = 0;
 
 var displayError = function(err) {
@@ -24,14 +22,16 @@ var displayError = function(err) {
 };
 
 var displayResult = function(result) {
-    console.log(result);
+	if(result != null){
+    	console.log(result);
+    }
 };
 
 
 //Save the config in JSON file
 var saveConfig = function(){
 	var jsonfile = require('jsonfile');
-	var file = './config.json';
+	var file = './config/config.json';
 
 	jsonfile.writeFile(file, config, {spaces: 2}, displayError);
 	console.log("Config saved: " + file);
@@ -40,7 +40,7 @@ var saveConfig = function(){
 //Save the devices in JSON file
 var saveDevices = function(){
 	var jsonfile = require('jsonfile');
-	var file = './devices.json';
+	var file = './storage/devices.json';
 
 	jsonfile.writeFile(file, devices, {spaces: 2}, displayError);
 	console.log("Devices saved: "+file);
@@ -174,14 +174,20 @@ var hueSetColor = function(deviceId, color, cbDone){
 			var r = (color >> 16) & 0xFF; 
 			var g = (color >> 8) & 0xFF;
 			var b = color & 0xFF;
-			convertDeviceIdToHueId(deviceId, function(hueId){
-				api.setLightState(hueId, state.rgb(r, g, b), function(err, result) {
-					if (err) throw err;
-					displayResult("Set " + deviceName + " color: R: " + r + " G: " + g + " B:" + b);
-					color2 = color;
-					console.log("Farbe: " + color);
-					cbDone(true);	
-				});
+			hueGetSwitch(deviceId, function(on){
+				if(on){
+					convertDeviceIdToHueId(deviceId, function(hueId){
+						api.setLightState(hueId, state.rgb(r, g, b), function(err, result) {
+							if (err) throw err;
+							displayResult("Set " + deviceName + " color: R: " + r + " G: " + g + " B:" + b);
+							color2 = color;
+							console.log("Farbe: " + color);
+							cbDone(true);	
+						});
+					});
+				}else{
+					displayError("Set " + deviceName + " color: Device is not on");
+				}
 			});
 		}else{
 			displayError("Set " + deviceName + " color: Value not between 0 and 16777215: " + color);
@@ -196,31 +202,6 @@ var hueSetColor = function(deviceId, color, cbDone){
  * @return {integer} - The value for the color in rgb  
  */
 var hueGetColor = function(deviceId, cbColor){
-	// convertDeviceIdToHueId(deviceId, function(hueId){
-	// 	api.lightStatus(hueId, function(err, result) {
-	//     	if (err) throw err;
-	// 		var x = result.state.xy[0]; // the given x value
-	// 		var y = result.state.xy[1]; // the given y value
-	// 		var z = 1.0 - x - y; 
-	// 		var Y = (result.state.bri/2.55); // The given brightness value
-	// 		var X = (Y / y) * x;  
-	// 		var Z = (Y / y) * z;
-
-	// 		//Convert to RGB using Wide RGB D65 conversion
-	// 		var r = X * 1.612 - Y * 0.203 - Z * 0.302;
-	// 		var g = -X * 0.509 + Y * 1.412 + Z * 0.066;
-	// 		var b = X * 0.026 - Y * 0.072 + Z * 0.962;
-
-	// 		//Apply reverse gamma correction
-	// 		r = r <= 0.0031308 ? 12.92 * r : (1.0 + 0.055) * Math.pow(r, (1.0 / 2.4)) - 0.055;
-	// 		g = g <= 0.0031308 ? 12.92 * g : (1.0 + 0.055) * Math.pow(g, (1.0 / 2.4)) - 0.055;
-	// 		b = b <= 0.0031308 ? 12.92 * b : (1.0 + 0.055) * Math.pow(b, (1.0 / 2.4)) - 0.055;
-	   
-	// 		var rgb = (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b);
-
-	//     	cbColor(rgb);
-	// 	});
-	// });
 	cbColor(color2);
 };
 
@@ -323,13 +304,18 @@ var getValue = function (deviceId, deviceComponentId, cbValue){
     }	    	
 };
 
+/**
+ * Get the message RequestConnection for the distributor
+ *
+ * @return {string} - The JSON SendDevices message
+ */
 var boeseRequestConnection = function(cbMessageRequerstConnection) {
 	var messageRequerstConnection =  '{'
 			+ '"Header":{'
 			+ '"MessageType":1,'
 			+ '"ConnectorId":' + (config.distributor.ConnectorId ? config.distributor.ConnectorId : -1) + ','
 			+ '"Status":0,'
-			+ '"Timestamp":' + timestamp.getTime()
+			+ '"Timestamp":' + new Date().getTime()
 			+ '},'
 			+ '"ConnectorName":"BOese-Phillips-HUE"';
 			if(config.distributor.Password){
@@ -352,7 +338,7 @@ var boeseSendDevices = function(cbMessageSendDevices){
 						+ '"MessageType":4,'
 						+ '"ConnectorId":' + config.distributor.ConnectorId + ','
 						+ '"Status":0,'
-						+ '"Timestamp":' + timestamp.getTime()
+						+ '"Timestamp":' + new Date().getTime()
 						+ '},'
 						+ '"Devices":[]}');
 			for(var i = 0; i < devices.Devices.length; i++){
@@ -368,7 +354,7 @@ var boeseSendDevices = function(cbMessageSendDevices){
 /**
  * Get the message SendDevices for the distributor
  *
- * @return {objekt} - The JSON SendDevices message
+ * @return {string} - The JSON SendDevices message
  */
 var boeseSendComponents = function(deviceId, cbMessageSendComponents){
 	hueGetComponents(deviceId, function(devices) {
@@ -380,66 +366,39 @@ var boeseSendComponents = function(deviceId, cbMessageSendComponents){
 						+ '"MessageType":7,'
 						+ '"ConnectorId":' + config.distributor.ConnectorId + ','
 						+ '"Status":0,'
-						+ '"Timestamp":' + timestamp.getTime()
+						+ '"Timestamp":' + new Date().getTime()
 						+ '},'
 						+ '"DeviceId":' + deviceId + ',' 
 						+ '"Components":' + JSON.stringify(devices.Devices[i].Components)
 						+ '}');
 
 				for(var j = 0; j < devices.Devices[i].Components.length; j++){
-
-					
-				// 	switch(devices.Devices[i].Components[j].ComponentName) {
-				// 		case "on":
-				// 			console.log("Valiue: "+hueGetSwitch2(deviceId));
-				// 			messageSendComponents.Components[j].Value = hueGetSwitch2(deviceId);
-				// 			// hueGetSwitch(deviceId, function(value){
-				// 			// 	console.log("test" +value);
-				// 			// 	//var value2=value;
-				// 			// 	//messageSendComponents.Components[j]. = 1;
-				// 			// 	messageSendComponents.Components[j].Timestamp = timestamp.getTime();
-				// 			// });
-				// 			break;
-				// // 		case "bri":
-				// // 			hueGetBrightness(deviceId, function(value){
-				// // 				var value2=value;
-				// // 				//messageSendComponents.Components[j].Value = 2;
-				// // 			});
-				// //     		break;
-				// //     	case "xy":
-				// // 			hueGetColor(deviceId, function(value){
-				// // 				var value2=value;
-				// // 				//messageSendComponents.Components[j].Value = 3;
-				// // 			});
-				// //     		break;
-				//     	default:
-				//     		displayError("todo" +j);
-				//     }
-				// //     messageSendComponents.Components[j].Value = value2;
 				  	messageSendComponents.Components[j].Value = 0;
-					messageSendComponents.Components[j].Timestamp = timestamp.getTime();
+					messageSendComponents.Components[j].Timestamp = new Date().getTime();
 				 }
 				cbMessageSendComponents(JSON.stringify(messageSendComponents));
 				break;	
 			}
-		}
-
-		
-			
+		}		
 	});	
 };
 
+/**
+ * Get the message SendValue for the distributor
+ *
+ * @return {string} - The JSON SendDevices message
+ */
 var boeseSendValue = function(deviceId, deviceComponentId, cbMessageSendValue){
 	getValue(deviceId, deviceComponentId, function(value){
 		var messageSendValue =  '{"Header":{'
 			+ '"MessageType":9,'
 			+ '"ConnectorId":' + config.distributor.ConnectorId + ','
 			+ '"Status":0,'
-			+ '"Timestamp":' + timestamp.getTime() + '},'
+			+ '"Timestamp":' + new Date().getTime() + '},'
 			+ '"DeviceId":' + deviceId + ',' 
 			+ '"DeviceComponentId":' + deviceComponentId + ',' 
 			+ '"Value":' + value + ','
-			+ '"Timestamp":' + timestamp.getTime() + '}';
+			+ '"Timestamp":' + new Date().getTime() + '}';
 		cbMessageSendValue(messageSendValue);		
 	});
 };
@@ -485,7 +444,6 @@ var connect = function(){
 			    		j = devices.Devices[i].Components.length;
 			    	}	
 		    	}
-		    	//Device found, end for
 		    	break;
 	   		 }
 	    }
@@ -507,6 +465,7 @@ var connect = function(){
 
 	    connection.on('close', function() {
 	        console.log('echo-protocol Connection Closed');
+	        client.connect('ws://'+config.distributor.ipaddress+':'+config.distributor.port+'/events/', null, null, null, {closeTimeout :5000000});
 	    });
 
 	    connection.on('message', function(message) {
@@ -641,12 +600,3 @@ var checkIpaddress = function(){
 	}
 };
 checkIpaddress();
-
-
-
-// boeseSendComponents(27,function(messageSendDevices) {
-							
-// 					    	console.log(messageSendDevices);
-						  
-//  						});		
-

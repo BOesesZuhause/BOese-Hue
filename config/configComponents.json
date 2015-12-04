@@ -1,5 +1,4 @@
 
-
 {
 	"Devices": [{
 		"Type": "Extended color light",
@@ -7,18 +6,28 @@
 		"Components" : [{
 			"DeviceComponentId" : -1,
 			"ComponentName" : "on",
-			"Value" : null,
+			"Value" : 1,
 			"Timestamp" :  null,
+			"Unit" : "OnOff",
 			"Description" : "Schalter",
 			"Actor" : 1
 		},
 		{
 			"DeviceComponentId" : -1,
 			"ComponentName" : "bri",
-			"Value" : null,
+			"Value" : 100,
 			"Timestamp" :  null,
 			"Unit" : "%",
 			"Description" : "Helligkeit",
+			"Actor" : 1 
+		},
+		{
+			"DeviceComponentId" : -1,
+			"ComponentName" : "xy",
+			"Value" : 16777215,
+			"Timestamp" :  null,
+			"Unit" : "RGB",
+			"Description" : "Farbe",
 			"Actor" : 1 
 		}]
 	}]
