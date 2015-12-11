@@ -133,13 +133,19 @@ var getDeviceName = function(deviceId, cbDeviceName){
 var hueSetBrightness = function(deviceId, brightness, cbDone){
 	getDeviceName(deviceId, function(deviceName){
 		if(brightness >= 0 && brightness <= 100){
-			convertDeviceIdToHueId(deviceId, function(hueId){
-				api.setLightState(hueId, state.brightness(brightness), function(err, result) {
-					if (err) throw err;
-					displayResult("Set " + deviceName + " brightness: " + brightness + "%");
-					cbDone(true);	
-				});
-			});
+			hueGetSwitch(deviceId, function(on){
+				if(on){
+					convertDeviceIdToHueId(deviceId, function(hueId){
+						api.setLightState(hueId, state.brightness(brightness), function(err, result) {
+							if (err) throw err;
+							displayResult("Set " + deviceName + " brightness: " + brightness + "%");
+							cbDone(true);	
+						});
+					});
+				}else{
+					displayError("Set " + deviceName + " brightness: Device is not on");
+				}
+			});	
 		}else{
 			displayError("Set " + deviceName + " brightness: Value not between 0 and 100: " + brightness);
 		}
