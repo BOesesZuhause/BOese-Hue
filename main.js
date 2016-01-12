@@ -15,6 +15,65 @@ var state = lightState.create();
 
 var color2 = 0;
 
+var distributorAddress = 'localhost';
+var distributorPort = 8081;
+var distributorUseTLS = false;
+var hueIP = null;
+var hueUser = null;
+if (process.argv.length > 2) {
+    var i = 2;
+    while (i < process.argv.length) {
+        switch (process.argv[i]) {
+            case '-h': // Help
+                console.log('BOese SmartHome Philips hue connector');
+                console.log('This is a node js based connector for the BOese SmartHome.');
+                console.log('\tnode main.js [options]');
+                console.log('If called without options it is assumed, that the distributor runs on localhost');
+                console.log('\toptions:');
+                console.log('\t\t-u\tURL of distributor (e.g. 192.168.0.1, localhost)');
+                console.log('\t\t-p\tPort of distributor(e.g. 8081)');
+                console.log('\t\t-tls\tConnection to distributor uses tls encryption');
+                console.log('\t\t-hueIP\tThe IP-Address of the hue bridge');
+                console.log('\t\t-hueUesr\tThe IP-Address of the hue bridge');
+                process.exit(0);
+                break;
+            case '-u': // URL
+                if ((i + 1) < process.argv.length) {
+                    // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
+                    distributorAddress = process.argv[++i];
+                } else {}
+                break;
+            case '-p': // Port
+                if ((i + 1) < process.argv.length) {
+                    // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
+                    distributorPort = process.argv[++i];
+                } else {}
+                break;
+            case '-tls': // Connection use tls encryption
+                distributorUseTLS = true;
+                break;
+            case '-hueIP': // IP of hue bridge
+                if ((i + 1) < process.argv.length) {
+                    // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
+                    hueIP = process.argv[++i];
+                } else {}
+                break;
+            case '-hueUser': // IP of hue bridge
+                if ((i + 1) < process.argv.length) {
+                    // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
+                    hueUser = process.argv[++i];
+                } else {}
+                break;
+        }
+        i++;
+    }
+}
+var distributorURI = distributorUseTLS ? 'wss://' : 'ws://';
+distributorURI += distributorAddress + ':' + distributorPort + '/events/';
+
+
+
+
 var displayError = function(err) {
 	if(err != null){
 		console.log("Error: " + err);
@@ -463,7 +522,7 @@ var connect = function(){
 	});
 
 	client.on('connect', function(connection) {
-	    console.log('Connected: ws://'+config.distributor.ipaddress+':'+config.distributor.port+'/events/');
+	    console.log('Connected: ' + distributorURI);
 
 	    connection.on('error', function(error) {
 	        console.log("Connection Error: " + error.toString());
@@ -471,7 +530,7 @@ var connect = function(){
 
 	    connection.on('close', function() {
 	        console.log('echo-protocol Connection Closed');
-	        client.connect('ws://'+config.distributor.ipaddress+':'+config.distributor.port+'/events/', null, null, null, {closeTimeout :5000000});
+	        client.connect(distributorURI, null, null, null, connectorTLS ? {rejectUnauthorized : false} : {});
 	    });
 
 	    connection.on('message', function(message) {
@@ -605,4 +664,5 @@ var checkIpaddress = function(){
 		checkUserConfig();
 	}
 };
+
 checkIpaddress();
