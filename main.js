@@ -550,7 +550,7 @@ var connect = function(){
 
 	    connection.on('close', function() {
 	        console.log('echo-protocol Connection Closed');
-	        client.connect(distributorURI, null, null, null, connectorTLS ? {rejectUnauthorized : false} : {});
+	        client.connect(distributorURI, null, null, null, config.distributor.tls ? {rejectUnauthorized : false} : {});
 	    });
 
 	    connection.on('message', function(message) {
@@ -649,7 +649,7 @@ var connect = function(){
 	});
 
 	//Connect to Distributor
-	client.connect(distributorURI, null, null, null, connectorTLS ? {rejectUnauthorized : false} : {});
+	client.connect(distributorURI, null, null, null, config.distributor.tls ? {rejectUnauthorized : false} : {});
 };
 
 var checkUserConfig = function (){
