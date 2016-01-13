@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 try {
 	 // a path we KNOW is totally bogus and not a module
 	var config = require('./config/config.json');
@@ -648,7 +649,7 @@ var connect = function(){
 	});
 
 	//Connect to Distributor
-	client.connect('ws://'+config.distributor.ipaddress+':'+config.distributor.port+'/events/', null, null, null, {closeTimeout :5000000});
+	client.connect(distributorURI, null, null, null, connectorTLS ? {rejectUnauthorized : false} : {});
 };
 
 var checkUserConfig = function (){
