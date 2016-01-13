@@ -1,6 +1,22 @@
-var config = require('./config/config.json');
-var devices = require('./storage/devices.json');
-
+try {
+	 // a path we KNOW is totally bogus and not a module
+	var config = require('./config/config.json');
+	}
+catch (e) {
+	 var config = {"hue": {
+			    "ipaddress": null,
+			    "username": null
+			  },
+			  	"distributor": {
+			    "ipaddress": "localhost",
+			    "port": 8081,
+			    "tls:": false,
+			    "ConnectorId": -1,
+			    "Password": null
+			  }
+			};
+}
+	
 var WebSocketClient = require('websocket').client;
 var JSPath = require('jspath');
 
@@ -9,17 +25,21 @@ var hue = require("node-hue-api"),
     HueApi = hue.HueApi,
     lightState = hue.lightState;
 
-var api = new HueApi(config.bridge.ipaddress, config.bridge.username);
+var api = new HueApi(config.hue.ipaddress, config.hue.username);
 
 var state = lightState.create();
 
 var color2 = 0;
 
-var distributorAddress = 'localhost';
-var distributorPort = 8081;
-var distributorUseTLS = false;
-var hueIP = null;
-var hueUser = null;
+//Save the config in JSON file
+var saveConfig = function(){
+	var jsonfile = require('jsonfile');
+	var file = './config/config.json';
+
+	jsonfile.writeFile(file, config, {spaces: 2}, displayError);
+	console.log("Config saved: " + file);
+};
+
 if (process.argv.length > 2) {
     var i = 2;
     while (i < process.argv.length) {
@@ -30,49 +50,55 @@ if (process.argv.length > 2) {
                 console.log('\tnode main.js [options]');
                 console.log('If called without options it is assumed, that the distributor runs on localhost');
                 console.log('\toptions:');
-                console.log('\t\t-u\tURL of distributor (e.g. 192.168.0.1, localhost)');
-                console.log('\t\t-p\tPort of distributor(e.g. 8081)');
-                console.log('\t\t-tls\tConnection to distributor uses tls encryption');
-                console.log('\t\t-hueIP\tThe IP-Address of the hue bridge');
-                console.log('\t\t-hueUesr\tThe IP-Address of the hue bridge');
+                console.log('\t\t-u\t\tURL of distributor (e.g. 192.168.0.1, localhost)');
+                console.log('\t\t-p\t\tPort of distributor(e.g. 8081)');
+                console.log('\t\t-tls\t\tConnection to distributor uses tls encryption');
+                console.log('\t\t-hueIP\t\tThe IP-Address of the hue bridge');
+                console.log('\t\t-hueUser\tThe IP-Address of the hue bridge');
                 process.exit(0);
                 break;
             case '-u': // URL
                 if ((i + 1) < process.argv.length) {
                     // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
-                    distributorAddress = process.argv[++i];
+                    config.distributor.ipaddress = process.argv[++i];
                 } else {}
                 break;
             case '-p': // Port
                 if ((i + 1) < process.argv.length) {
                     // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
-                    distributorPort = process.argv[++i];
+                	config.distributor.port = process.argv[++i];
                 } else {}
                 break;
             case '-tls': // Connection use tls encryption
-                distributorUseTLS = true;
+            	config.distributor.tls = true;
                 break;
             case '-hueIP': // IP of hue bridge
                 if ((i + 1) < process.argv.length) {
                     // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
-                    hueIP = process.argv[++i];
+                	config.hue.ipaddress = process.argv[++i];
                 } else {}
                 break;
             case '-hueUser': // IP of hue bridge
                 if ((i + 1) < process.argv.length) {
                     // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
-                    hueUser = process.argv[++i];
+                	config.hue.username = process.argv[++i];
                 } else {}
                 break;
         }
         i++;
     }
+    saveConfig();
 }
-var distributorURI = distributorUseTLS ? 'wss://' : 'ws://';
-distributorURI += distributorAddress + ':' + distributorPort + '/events/';
+var distributorURI = config.distributor.tls ? 'wss://' : 'ws://';
+distributorURI += config.distributor.ipaddress + ':' + config.distributor.port + '/events/';
 
-
-
+try {
+	var devices = require('./storage/devices.json');
+}
+catch (e) {
+	console.log('No old hue devices found.');
+	var devices = {};
+}
 
 var displayError = function(err) {
 	if(err != null){
@@ -87,14 +113,7 @@ var displayResult = function(result) {
 };
 
 
-//Save the config in JSON file
-var saveConfig = function(){
-	var jsonfile = require('jsonfile');
-	var file = './config/config.json';
 
-	jsonfile.writeFile(file, config, {spaces: 2}, displayError);
-	console.log("Config saved: " + file);
-};
 
 //Save the devices in JSON file
 var saveDevices = function(){
@@ -634,7 +653,7 @@ var connect = function(){
 
 var checkUserConfig = function (){
 	// Check if user in config
-	if (config.bridge.username == null){
+	if (config.hue.username == null){
 		createUser();
 	}
 	else{
@@ -644,14 +663,14 @@ var checkUserConfig = function (){
 
 //Check if ipaddress in config.json
 var checkIpaddress = function(){
-	if (config.bridge.ipaddress == null){
+	if (config.hue.ipaddress == null){
 		//Search the ipaddress from the HUE Bridge
 		hue.nupnpSearch(function(err, result) {
     		if (err) throw err;
     		console.log("Hue Bridge Found: " + JSON.stringify(result));
 
     		//Save ipadress in config
-   		 	config.bridge.ipaddress = result[0].ipaddress;
+   		 	config.hue.ipaddress = result[0].ipaddress;
 
    			//Save ipaddress in config.json
    			saveConfig();
@@ -664,5 +683,5 @@ var checkIpaddress = function(){
 		checkUserConfig();
 	}
 };
-
+console.log("Test");
 checkIpaddress();

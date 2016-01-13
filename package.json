@@ -6,7 +6,7 @@
 
 	"dependencies": {
 		"websocket": "1.0.X",
-		"node-hue-api": "1.1.X",
+		"node-hue-api": "2.0.X",
 		"jsonfile": "2.2.X",
 		"jspath": "0.3.X"
 	}
