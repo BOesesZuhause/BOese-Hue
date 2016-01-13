@@ -16,6 +16,7 @@ catch (e) {
 			    "Password": null
 			  }
 			};
+	 saveConfig();
 }
 	
 var WebSocketClient = require('websocket').client;
@@ -652,10 +653,24 @@ var connect = function(){
 	client.connect(distributorURI, null, null, null, config.distributor.tls ? {rejectUnauthorized : false} : {});
 };
 
-var checkUserConfig = function (){
+var createHueUser = function (){
+	// Check if user in config
+	hue.createUser(config.hue.ipaddress, function(err, user) {
+	    if (err) throw err;
+	    console.log("Press the button on the Philips hue bridge to create an new user.");
+	    console-log("New user created: " + user);
+	    config.hue.username = user;
+	    saveConfig();
+	    connect();
+	});
+		
+	}
+};
+
+var checkHueUserConfig = function (){
 	// Check if user in config
 	if (config.hue.username == null){
-		createUser();
+		createHueUser();
 	}
 	else{
 		connect();
@@ -663,7 +678,7 @@ var checkUserConfig = function (){
 };
 
 //Check if ipaddress in config.json
-var checkIpaddress = function(){
+var checkHueIpAddress = function(){
 	if (config.hue.ipaddress == null){
 		//Search the ipaddress from the HUE Bridge
 		hue.nupnpSearch(function(err, result) {
@@ -677,12 +692,12 @@ var checkIpaddress = function(){
    			saveConfig();
 
    			//Check if Username in config.json
-   			checkUserConfig();
+   			checkHueUserConfig();
 		});
 	} else{
 		//Check if Username in config.json
 		checkUserConfig();
 	}
 };
-console.log("Test");
-checkIpaddress();
+
+checkHueIpAddress();
