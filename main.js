@@ -4,19 +4,21 @@ try {
 	var config = require('./config/config.json');
 	}
 catch (e) {
-	 var config = {"hue": {
-			    "ipaddress": null,
-			    "username": null
-			  },
-			  	"distributor": {
-			    "ipaddress": "localhost",
-			    "port": 8081,
-			    "tls:": false,
-			    "ConnectorId": -1,
-			    "Password": null
-			  }
-			};
-	 saveConfig();
+	 var config = '{'
+		 	+ '"hue": {'
+		 	+ '"ipaddress": null,'
+		 	+ '"username": null'
+			+ '},'
+			+ '"distributor":{'
+			+ '"ipaddress": "localhost",'
+			+ '"port": 8081,'
+			+ '"tls": false,'
+			+ '"ConnectorId": -1,'
+			+ '"Password": null'
+			+ '}'
+			+ '}';
+	 
+	 config = JSON.parse(config);
 }
 	
 var WebSocketClient = require('websocket').client;
@@ -40,6 +42,7 @@ var saveConfig = function(){
 
 	jsonfile.writeFile(file, config, {spaces: 2}, displayError);
 	console.log("Config saved: " + file);
+	console.log(config);
 };
 
 if (process.argv.length > 2) {
@@ -418,6 +421,7 @@ var boeseRequestConnection = function(cbMessageRequerstConnection) {
  * @return {objekt} - The JSON SendDevices message
  */
 var boeseSendDevices = function(cbMessageSendDevices){
+	console.log("test23");
 	hueGetDevices(function(devices) {
 		if(devices.Devices.length){
 			var messageSendDevices = JSON.parse('{"Header":{'
@@ -605,14 +609,6 @@ var connect = function(){
 
 	                        	});
 	                        });
-	       //                  console.log("boeseSendValue");
-	       //                  	boeseSendValue(jsonMessage.DeviceId, jsonMessage.DeviceComponentId, function(messageSendValue){
-	       //                  		if (connection.connected) {
-								// 	connection.send(messageSendValue);
-								// }
-							 //    console.log("Send: '" + messageSendValue + "'");   
-
-	       //                  	});
 	                    	break;
 	                  	case 10:
 	                    	console.log("MessageType: ConfirmValue");
@@ -654,21 +650,24 @@ var connect = function(){
 };
 
 var createHueUser = function (){
+	
+	var HueApi = require("node-hue-api").HueApi;
+	var hue = new HueApi();
+	console.log("Press the button on the Philips hue bridge to create an new user.");
+	
 	// Check if user in config
 	hue.createUser(config.hue.ipaddress, function(err, user) {
 	    if (err) throw err;
-	    console.log("Press the button on the Philips hue bridge to create an new user.");
-	    console-log("New user created: " + user);
+	    console.log("New user created: " + user);
 	    config.hue.username = user;
 	    saveConfig();
 	    connect();
-	});
-		
-	}
+	});		
 };
 
 var checkHueUserConfig = function (){
 	// Check if user in config
+		console.log(config.hue.ipaddress);
 	if (config.hue.username == null){
 		createHueUser();
 	}
@@ -694,9 +693,11 @@ var checkHueIpAddress = function(){
    			//Check if Username in config.json
    			checkHueUserConfig();
 		});
+			//Check if Username in config.json
+			//checkHueUserConfig();
 	} else{
 		//Check if Username in config.json
-		checkUserConfig();
+		checkHueUserConfig();
 	}
 };
 
