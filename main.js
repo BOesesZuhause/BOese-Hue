@@ -1,10 +1,11 @@
 #!/usr/bin/env node
+var config = {};
 try {
 	 // a path we KNOW is totally bogus and not a module
-	var config = require('./config/config.json');
+	config = require('./config/config.json');
 	}
 catch (e) {
-	 var config = '{'
+	 config = '{'
 		 	+ '"hue": {'
 		 	+ '"ipaddress": null,'
 		 	+ '"username": null'
@@ -97,12 +98,13 @@ if (process.argv.length > 2) {
 var distributorURI = config.distributor.tls ? 'wss://' : 'ws://';
 distributorURI += config.distributor.ipaddress + ':' + config.distributor.port + '/events/';
 
+var devices = {};
 try {
-	var devices = require('./storage/devices.json');
+	devices = require('./storage/devices.json');
 }
 catch (e) {
 	console.log('No old hue devices found.');
-	var devices = {};
+	devices = {};
 }
 
 var displayError = function(err) {
@@ -154,6 +156,7 @@ var convertDeviceComponentIdToHueId = function(deviceComponentId, cbComponentNam
 var hueGetDevices = function(cbDevices){
 	api.lights(function(err, device) {
    		if (err) throw err;
+   	
 		if(devices.Devices === undefined) {
 			devices = JSON.parse('{"Devices":[]}');
 			var noKnowDevices = true;
@@ -185,7 +188,7 @@ var hueGetComponents = function(deviceId, cbDevices){
 		   	 	for(var i = 0; i < devices.Devices.length; i++){
 					if(devices.Devices[i].DeviceId == deviceId){
 						for(var j = 0; j < JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents).length; j++){
-							devices.Devices[i].Components.push({"DeviceComponentId": -1, "ComponentName": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents)[j], "Description": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Description', configComponents)[j], "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Unit', configComponents)[j], "Actor": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Actor', configComponents)[j]});
+							devices.Devices[i].Components.push({"DeviceComponentId": -1, "ComponentName": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents)[j], "Description": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Description', configComponents)[j], "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Unit', configComponents)[j],  "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Value', configComponents)[j], "Actor": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Actor', configComponents)[j]});
 						}
 					break;
 					}
@@ -257,6 +260,7 @@ var hueGetBrightness = function(deviceId, cbBrightness){
  * @param {integer} color - The value for the color in rgb.  
  */
 var hueSetColor = function(deviceId, color, cbDone){
+	console.log("Farbe ändern");
 	getDeviceName(deviceId, function(deviceName){
 		if(color >= 0 && color <= 16777215){
 			//Convert color to r, g, b
@@ -357,12 +361,28 @@ var setValue = function(deviceId, deviceComponentId, value, cbDone){
 			});
 			break;
 		case "bri":
-			hueSetBrightness(deviceId, value, function(done){
+			hueSetColor(deviceId, JSPath.apply('.Devices{.DeviceId === ' + deviceId + '}.Components{.ComponentName === "xy" }.Value', devices)[0], function(done){
+				hueSetBrightness(deviceId, value, function(done2){
+					cbDone(done2);
+				});
 				cbDone(done);
 			});
     		break;
     	case "xy":
-			hueSetColor(deviceId,value, function(done){
+			hueSetColor(deviceId, value, function(done){
+				for(var i = 0; i < devices.Devices.length; i++){
+					if( devices.Devices[i].DeviceId == deviceId){
+						for(var j = 0; j < devices.Devices[i].Components.length; j++){
+							if(devices.Devices[i].Components[j].ComponentName == "xy"){
+								devices.Devices[i].Components[j].Value = value;
+								console.log("Farbe speichern:"+ devices.Devices[i].Components[j].Value);
+								break;
+							console.log(j);
+							}
+						}
+						break;
+					}
+				}
 				cbDone(done);
 			});
     		break;
@@ -656,13 +676,20 @@ var createHueUser = function (){
 	console.log("Press the button on the Philips hue bridge to create an new user.");
 	
 	// Check if user in config
-	hue.createUser(config.hue.ipaddress, function(err, user) {
-	    if (err) throw err;
-	    console.log("New user created: " + user);
-	    config.hue.username = user;
-	    saveConfig();
-	    connect();
-	});		
+	for(var i = 0; i < 60; i++){
+		try{
+				hue.createUser(config.hue.ipaddress, function(err, user) {
+				    if (err) throw err;
+				    console.log("New user created: " + user);
+				    config.hue.username = user;
+				    saveConfig();
+				    connect();
+				});	
+		}
+		catch (e) {
+			setTimeout(callback, 100);
+		}	
+	}
 };
 
 var checkHueUserConfig = function (){
@@ -678,7 +705,7 @@ var checkHueUserConfig = function (){
 
 //Check if ipaddress in config.json
 var checkHueIpAddress = function(){
-	if (config.hue.ipaddress == null){
+	if (config.hue.ipaddress === null){
 		//Search the ipaddress from the HUE Bridge
 		hue.nupnpSearch(function(err, result) {
     		if (err) throw err;
