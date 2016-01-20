@@ -1,4 +1,32 @@
-#!/usr/bin/env node
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: main.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: main.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>#!/usr/bin/env node
 try {
 	var config = require('./config/config.json');
 }catch (e) {
@@ -45,7 +73,7 @@ var saveConfig = function(){
 
 if (process.argv.length > 2) {
     var i = 2;
-    while (i < process.argv.length) {
+    while (i &lt; process.argv.length) {
         switch (process.argv[i]) {
             case '-h': // Help
                 console.log('BOese SmartHome Philips hue connector');
@@ -61,13 +89,13 @@ if (process.argv.length > 2) {
                 process.exit(0);
                 break;
             case '-u': // URL
-                if ((i + 1) < process.argv.length) {
+                if ((i + 1) &lt; process.argv.length) {
                     // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
                     config.distributor.ipaddress = process.argv[++i];
                 } else {}
                 break;
             case '-p': // Port
-                if ((i + 1) < process.argv.length) {
+                if ((i + 1) &lt; process.argv.length) {
                     // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
                 	config.distributor.port = process.argv[++i];
                 } else {}
@@ -76,13 +104,13 @@ if (process.argv.length > 2) {
             	config.distributor.tls = true;
                 break;
             case '-hueIP': // IP of hue bridge
-                if ((i + 1) < process.argv.length) {
+                if ((i + 1) &lt; process.argv.length) {
                     // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
                 	config.hue.ipaddress = process.argv[++i];
                 } else {}
                 break;
             case '-hueUser': // IP of hue bridge
-                if ((i + 1) < process.argv.length) {
+                if ((i + 1) &lt; process.argv.length) {
                     // console.log(process.argv[i] + ' : ' + process.argv[i+1]);
                 	config.hue.username = process.argv[++i];
                 } else {}
@@ -174,7 +202,7 @@ var hueGetDevices = function(cbDevices){
 			var noKnowDevices = false;
 		}
 
-		for(var i = 0; i < device.lights.length; i++){
+		for(var i = 0; i &lt; device.lights.length; i++){
 			if(noKnowDevices){
 				devices.Devices.push({"DeviceName": device.lights[i].name, "HueId": parseInt(device.lights[i].id), "DeviceId": -1, "Components":[]});
 			}else{
@@ -201,9 +229,9 @@ var hueGetComponents = function(deviceId, cbDevices){
 	   		if (err) throw err;
 	   		if(!JSPath.apply('.Devices.{.DeviceId === ' + deviceId + '}.Components', devices)[0]){
 		   	 	var configComponents = require('./config/configComponents.json');
-		   	 	for(var i = 0; i < devices.Devices.length; i++){
+		   	 	for(var i = 0; i &lt; devices.Devices.length; i++){
 					if(devices.Devices[i].DeviceId == deviceId){
-						for(var j = 0; j < JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents).length; j++){
+						for(var j = 0; j &lt; JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents).length; j++){
 							devices.Devices[i].Components.push({"DeviceComponentId": -1, "ComponentName": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents)[j], "Description": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Description', configComponents)[j], "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Unit', configComponents)[j],  "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Value', configComponents)[j], "Actor": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Actor', configComponents)[j]});
 						}
 					break;
@@ -234,7 +262,7 @@ var getDeviceName = function(deviceId, cbDeviceName){
  */
 var hueSetBrightness = function(deviceId, brightness, cbDone){
 	getDeviceName(deviceId, function(deviceName){
-		if(brightness >= 0 && brightness <= 100){
+		if(brightness >= 0 &amp;&amp; brightness &lt;= 100){
 			hueGetSwitch(deviceId, function(on){
 				if(on){
 					convertDeviceIdToHueId(deviceId, function(hueId){
@@ -279,11 +307,11 @@ var hueGetBrightness = function(deviceId, cbBrightness){
 var hueSetColor = function(deviceId, color, cbDone){
 	console.log("Farbe ändern");
 	getDeviceName(deviceId, function(deviceName){
-		if(color >= 0 && color <= 16777215){
+		if(color >= 0 &amp;&amp; color &lt;= 16777215){
 			//Convert color to r, g, b
-			var r = (color >> 16) & 0xFF; 
-			var g = (color >> 8) & 0xFF;
-			var b = color & 0xFF;
+			var r = (color >> 16) &amp; 0xFF; 
+			var g = (color >> 8) &amp; 0xFF;
+			var b = color &amp; 0xFF;
 			hueGetSwitch(deviceId, function(on){
 				if(on){
 					convertDeviceIdToHueId(deviceId, function(hueId){
@@ -393,9 +421,9 @@ var setValue = function(deviceId, deviceComponentId, value, cbDone){
     		break;
     	case "xy":
 			hueSetColor(deviceId, value, function(done){
-				for(var i = 0; i < devices.Devices.length; i++){
+				for(var i = 0; i &lt; devices.Devices.length; i++){
 					if( devices.Devices[i].DeviceId == deviceId){
-						for(var j = 0; j < devices.Devices[i].Components.length; j++){
+						for(var j = 0; j &lt; devices.Devices[i].Components.length; j++){
 							if(devices.Devices[i].Components[j].ComponentName == "xy"){
 								devices.Devices[i].Components[j].Value = value;
 								break;
@@ -483,7 +511,7 @@ var boeseSendDevices = function(cbMessageSendDevices){
 
 		if(devices.Devices.length){	
 
-			for(var i = 0; i < devices.Devices.length; i++){
+			for(var i = 0; i &lt; devices.Devices.length; i++){
 				messageSendDevices.Devices.push({"DeviceName": devices.Devices[i].DeviceName, "DeviceId":devices.Devices[i].DeviceId});
 			}
 
@@ -500,7 +528,7 @@ var boeseSendDevices = function(cbMessageSendDevices){
 var boeseSendComponents = function(deviceId, cbMessageSendComponents){
 	hueGetComponents(deviceId, function(devices) {
 
-		for(var i = 0; i < devices.Devices.length; i++){
+		for(var i = 0; i &lt; devices.Devices.length; i++){
 			if(devices.Devices[i].DeviceId == deviceId){
 
 				var messageSendComponents = JSON.parse('{"Header":{'
@@ -513,7 +541,7 @@ var boeseSendComponents = function(deviceId, cbMessageSendComponents){
 						+ '"Components":' + JSON.stringify(devices.Devices[i].Components)
 						+ '}');
 
-				for(var j = 0; j < devices.Devices[i].Components.length; j++){
+				for(var j = 0; j &lt; devices.Devices[i].Components.length; j++){
 				  	messageSendComponents.Components[j].Value = 0;
 					messageSendComponents.Components[j].Timestamp = new Date().getTime();
 				 }
@@ -567,7 +595,7 @@ var connect = function(){
  	* @param {onjekt} message - The message for confirmDevices.
  	*/
 	var confirmDevices = function(message){
-	    for (var i = 0; i < devices.Devices.length; i++){
+	    for (var i = 0; i &lt; devices.Devices.length; i++){
 	    	
 	    	// Search the Devices with the same names
 	    	if (message.Devices[0].DeviceName == devices.Devices[i].DeviceName){
@@ -583,11 +611,11 @@ var connect = function(){
  	* @param {onjekt} message - The message for confirmDeviceComponents.
  	*/
 	var confirmDeviceComponents = function(message){
-	    for (var i = 0; i < devices.Devices.length; i++){
+	    for (var i = 0; i &lt; devices.Devices.length; i++){
 
 	    	//Search the same Device Id in message and devices
 	    	if(message.DeviceId == devices.Devices[i].DeviceId){
-		    	for(var j = 0; j < devices.Devices[i].Components.length; j++){
+		    	for(var j = 0; j &lt; devices.Devices[i].Components.length; j++){
 
 			    	// Serach the components with the same name
 			    	if (message.Components[0].ComponentName == devices.Devices[i].Components[j].ComponentName){
@@ -722,7 +750,7 @@ var createHueUser = function (){
 	displayResult("Press the button on the Philips hue bridge to create an new user.");
 	
 	// Check if user in config
-	for(var i = 0; i < 60; i++){
+	for(var i = 0; i &lt; 60; i++){
 		try{
 				hue.createUser(config.hue.ipaddress, function(err, user) {
 				    if (err) throw err;
@@ -778,4 +806,26 @@ var checkHueIpAddress = function(){
 	}
 };
 
-checkHueIpAddress();
+checkHueIpAddress();</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#boeseRequestConnection">boeseRequestConnection</a></li><li><a href="global.html#boeseSendComponents">boeseSendComponents</a></li><li><a href="global.html#boeseSendDevices">boeseSendDevices</a></li><li><a href="global.html#boeseSendValue">boeseSendValue</a></li><li><a href="global.html#checkHueIpAddress">checkHueIpAddress</a></li><li><a href="global.html#checkHueUserConfig">checkHueUserConfig</a></li><li><a href="global.html#connect">connect</a></li><li><a href="global.html#convertDeviceComponentIdToHueId">convertDeviceComponentIdToHueId</a></li><li><a href="global.html#convertDeviceIdToHueId">convertDeviceIdToHueId</a></li><li><a href="global.html#createHueUser">createHueUser</a></li><li><a href="global.html#displayError">displayError</a></li><li><a href="global.html#displayResult">displayResult</a></li><li><a href="global.html#getDeviceName">getDeviceName</a></li><li><a href="global.html#getValue">getValue</a></li><li><a href="global.html#hueGetBrightness">hueGetBrightness</a></li><li><a href="global.html#hueGetColor">hueGetColor</a></li><li><a href="global.html#hueGetComponents">hueGetComponents</a></li><li><a href="global.html#hueGetDevices">hueGetDevices</a></li><li><a href="global.html#hueGetSwitch">hueGetSwitch</a></li><li><a href="global.html#hueSetBrightness">hueSetBrightness</a></li><li><a href="global.html#hueSetColor">hueSetColor</a></li><li><a href="global.html#hueSetSwitch">hueSetSwitch</a></li><li><a href="global.html#saveConfig">saveConfig</a></li><li><a href="global.html#saveDevices">saveDevices</a></li><li><a href="global.html#setValue">setValue</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Jan 19 2016 12:27:59 GMT+0100 (CET)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
