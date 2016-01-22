@@ -95,6 +95,18 @@ if (process.argv.length > 2) {
 var distributorURI = config.distributor.tls ? 'wss://' : 'ws://';
 distributorURI += config.distributor.ipaddress + ':' + config.distributor.port + '/events/';
 
+/**
+ * @description Display the result on the console.
+ *
+ * @param {string} result - The result message.
+ */
+
+var displayResult = function(result) {
+	if(result != null){
+    	console.log(result);
+    }
+};
+
 try {
 	var devices = require('./storage/devices.json');
 }catch (e) {
@@ -113,17 +125,7 @@ var displayError = function(err) {
 	}
 };
 
-/**
- * @description Display the result on the console.
- *
- * @param {string} result - The result message.
- */
 
-var displayResult = function(result) {
-	if(result != null){
-    	console.log(result);
-    }
-};
 
 /**
  * @description Save the devices to a JSON file.
@@ -204,7 +206,7 @@ var hueGetComponents = function(deviceId, cbDevices){
 		   	 	for(var i = 0; i < devices.Devices.length; i++){
 					if(devices.Devices[i].DeviceId == deviceId){
 						for(var j = 0; j < JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents).length; j++){
-							devices.Devices[i].Components.push({"DeviceComponentId": -1, "ComponentName": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents)[j], "Description": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Description', configComponents)[j], "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Unit', configComponents)[j],  "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Value', configComponents)[j], "Actor": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Actor', configComponents)[j]});
+							devices.Devices[i].Components.push({"DeviceComponentId": -1, "ComponentName": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents)[j], "Description": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Description', configComponents)[j], "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Unit', configComponents)[j],  "Value": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Value', configComponents)[j], "Actor": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Actor', configComponents)[j]});
 						}
 					break;
 					}
