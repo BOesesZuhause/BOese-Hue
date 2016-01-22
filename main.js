@@ -48,7 +48,7 @@ if (process.argv.length > 2) {
     while (i < process.argv.length) {
         switch (process.argv[i]) {
             case '-h': // Help
-                console.log('BOese SmartHome Philips hue connector');
+                console.log('BOese SmartHome Philips Hue connector');
                 console.log('This is a node js based connector for the BOese SmartHome.');
                 console.log('\tnode main.js [options]');
                 console.log('If called without options it is assumed, that the distributor runs on localhost');
@@ -56,8 +56,8 @@ if (process.argv.length > 2) {
                 console.log('\t\t-u\t\tURL of distributor (e.g. 192.168.0.1, localhost)');
                 console.log('\t\t-p\t\tPort of distributor(e.g. 8081)');
                 console.log('\t\t-tls\t\tConnection to distributor uses tls encryption');
-                console.log('\t\t-hueIP\t\tThe IP-Address of the hue bridge');
-                console.log('\t\t-hueUser\tThe IP-Address of the hue bridge');
+                console.log('\t\t-hueIP\t\tThe IP-Address of the Hue bridge');
+                console.log('\t\t-hueUser\tThe IP-Address of the Hue bridge');
                 process.exit(0);
                 break;
             case '-u': // URL
@@ -98,7 +98,7 @@ distributorURI += config.distributor.ipaddress + ':' + config.distributor.port +
 try {
 	var devices = require('./storage/devices.json');
 }catch (e) {
-	displayResult("No old hue devices found.");
+	displayResult("No old Hue devices found.");
 	var devices = {};
 }
 
@@ -159,9 +159,9 @@ var convertDeviceComponentIdToHueId = function(deviceComponentId, cbComponentNam
 };
 
 /**
- * @description Search the devices wich connectet with the hue bridge.
+ * @description Search the devices wich connectet with the Hue bridge.
  *
- * @return {objekt} - Returns the devices from the hue bridge.
+ * @return {objekt} - Returns the devices from the Hue bridge.
  */
 var hueGetDevices = function(cbDevices){
 	api.lights(function(err, device) {
@@ -190,10 +190,10 @@ var hueGetDevices = function(cbDevices){
 };
 
 /**
- * @description Search the components from the device wich connectet with the hue bridge by DeviceId.
+ * @description Search the components from the device wich connectet with the Hue bridge by DeviceId.
  *
  * @param {integer} deviceId - The DeviceId from the Device.
- * @return {objekt} - Returns the devices from the hue bridge.
+ * @return {objekt} - Returns the devices from the Hue bridge.
  */
 var hueGetComponents = function(deviceId, cbDevices){
 	convertDeviceIdToHueId(deviceId, function(hueId){
@@ -304,7 +304,7 @@ var hueSetColor = function(deviceId, color, cbDone){
 };
 
 /**
- * @description Get the color from the Hue Lamp.
+ * @description Get the color from the Hue lamp.
  *
  * @param {integer} deviceId - The DeviceId from the Device.
  * @return {integer} - The value for the color in rgb  
@@ -456,7 +456,7 @@ var boeseRequestConnection = function(cbMessageRequerstConnection) {
 			+ '"Status":0,'
 			+ '"Timestamp":' + new Date().getTime()
 			+ '},'
-			+ '"ConnectorName":"BOese-Philips-hue"';
+			+ '"ConnectorName":"BOese-Philips-Hue"';
 			if(config.distributor.Password){
 				messageRequerstConnection += ',"Password":"' + config.distributor.Password + '"}';
 			}else{
@@ -553,7 +553,7 @@ var connect = function(){
 	/**
  	* @description Handle the confirmConnection message.
  	*
- 	* @param {onjekt} message - The message for confirmConnection.
+ 	* @param {objekt} message - The message for confirmConnection.
  	*/
 	var confirmConnection = function(message){
 	    config.distributor.ConnectorId = message.Header.ConnectorId;
@@ -564,7 +564,7 @@ var connect = function(){
 	/**
  	* @description Handle the confirmDevices message.
  	*
- 	* @param {onjekt} message - The message for confirmDevices.
+ 	* @param {objekt} message - The message for confirmDevices.
  	*/
 	var confirmDevices = function(message){
 	    for (var i = 0; i < devices.Devices.length; i++){
@@ -580,7 +580,7 @@ var connect = function(){
 	/**
  	* @description Handle the confirmDeviceComponents message.
  	*
- 	* @param {onjekt} message - The message for confirmDeviceComponents.
+ 	* @param {objekt} message - The message for confirmDeviceComponents.
  	*/
 	var confirmDeviceComponents = function(message){
 	    for (var i = 0; i < devices.Devices.length; i++){
@@ -719,7 +719,7 @@ var createHueUser = function (){
 	
 	var HueApi = require("node-hue-api").HueApi;
 	var hue = new HueApi();
-	displayResult("Press the button on the Philips hue bridge to create an new user.");
+	displayResult("Press the button on the Philips Hue bridge to create an new user.");
 	
 	// Check if user in config
 	for(var i = 0; i < 60; i++){
@@ -752,14 +752,14 @@ var checkHueUserConfig = function (){
 };
 
 /**
-* @description Check is the hue bridge ipaddress save in the config.
+* @description Check is the Hue bridge ipaddress save in the config.
 */
 var checkHueIpAddress = function(){
 	if (config.hue.ipaddress === null){
 		//Search the ipaddress from the HUE Bridge
 		hue.nupnpSearch(function(err, result) {
     		if (err) throw err;
-    		displayResult("Hue Bridge Found: " + JSON.stringify(result));
+    		displayResult("Hue bridge found: " + JSON.stringify(result));
 
     		//Save ipadress in config
    		 	config.hue.ipaddress = result[0].ipaddress;
