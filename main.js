@@ -717,27 +717,21 @@ var connect = function(){
 /**
 * @description Create an new user on the hue bridge.
 */
-var createHueUser = function (){
+var hueCreateUser = function (){
 	
-	var HueApi = require("node-hue-api").HueApi;
+	//var HueApi = require("node-hue-api").HueApi;
 	var hue = new HueApi();
-	displayResult("Press the button on the Philips Hue bridge to create an new user.");
 	
-	// Check if user in config
-	for(var i = 0; i < 60; i++){
-		try{
-				hue.createUser(config.hue.ipaddress, function(err, user) {
-				    if (err) throw err;
-				    displayResult("New user created: " + user);
-				    config.hue.username = user;
-				    saveConfig();
-				    connect();
-				});	
-		}
-		catch (e) {
-			setTimeout(callback, 100);
-		}	
+	try{
+		hue.createUser(config.hue.ipaddress, function(err, user) {
+		    if (err) throw err;
+		    displayResult("New user created: " + user);
+		    config.hue.username = user;
+		    saveConfig();
+		});	
 	}
+	catch (e) {	
+	}	
 };
 
 /**
@@ -746,11 +740,12 @@ var createHueUser = function (){
 var checkHueUserConfig = function (){
 	// Check if user in config
 	if (config.hue.username == null){
-		createHueUser();
+		displayResult("Press the button on the Philips Hue bridge to create an new user.");
+		while(config.hue.username == null){
+			setTimeout(hueCreateUser(), 1000);
+		}
 	}
-	else{
-		connect();
-	}
+	connect();
 };
 
 /**
@@ -772,8 +767,6 @@ var checkHueIpAddress = function(){
    			//Check if Username in config.json
    			checkHueUserConfig();
 		});
-			//Check if Username in config.json
-			//checkHueUserConfig();
 	} else{
 		//Check if Username in config.json
 		checkHueUserConfig();
