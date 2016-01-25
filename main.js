@@ -713,6 +713,7 @@ var connect = function(){
 	client.connect(distributorURI, null, null, null, config.distributor.tls ? {rejectUnauthorized : false} : {});
 };
 
+var timeoutcounter = 0;
 
 /**
 * @description Create an new user on the hue bridge.
@@ -724,13 +725,23 @@ var hueCreateUser = function (){
 	
 	try{
 		hue.createUser(config.hue.ipaddress, function(err, user) {
-		    if (err) throw err;
-		    displayResult("New user created: " + user);
-		    config.hue.username = user;
-		    saveConfig();
+		    if (err) {
+		    	process.stdout.write(".");
+		    	if (timeoutcounter++ < 30) {
+					setTimeout(hueCreateUser(), 1000);
+				}
+		    } else {
+		    	displayResult("\nNew user created: " + user);
+			    config.hue.username = user;
+			    saveConfig();
+			    connect();
+		    }
 		});	
 	}
 	catch (e) {	
+		if (timeoutcounter++ < 30) {
+			setTimeout(hueCreateUser(), 1000);
+		}
 	}	
 };
 
@@ -741,11 +752,11 @@ var checkHueUserConfig = function (){
 	// Check if user in config
 	if (config.hue.username == null){
 		displayResult("Press the button on the Philips Hue bridge to create an new user.");
-		while(config.hue.username == null){
+		//while(config.hue.username == null){
 			setTimeout(hueCreateUser(), 1000);
-		}
+		//}
 	}
-	connect();
+	
 };
 
 /**
