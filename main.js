@@ -516,7 +516,7 @@ var boeseSendComponents = function(deviceId, cbMessageSendComponents){
 						+ '}');
 
 				for(var j = 0; j < devices.Devices[i].Components.length; j++){
-				  	messageSendComponents.Components[j].Value = 0;
+				  	//messageSendComponents.Components[j].Value = 0;
 					messageSendComponents.Components[j].Timestamp = new Date().getTime();
 				 }
 				cbMessageSendComponents(JSON.stringify(messageSendComponents));
@@ -727,7 +727,7 @@ var hueCreateUser = function (){
 		hue.createUser(config.hue.ipaddress, function(err, user) {
 		    if (err) {
 		    	process.stdout.write(".");
-		    	if (timeoutcounter++ < 30) {
+		    	if (timeoutcounter++ < 100) {
 					setTimeout(hueCreateUser(), 1000);
 				}
 		    } else {
@@ -739,7 +739,7 @@ var hueCreateUser = function (){
 		});	
 	}
 	catch (e) {	
-		if (timeoutcounter++ < 30) {
+		if (timeoutcounter++ < 100) {
 			setTimeout(hueCreateUser(), 1000);
 		}
 	}	
@@ -755,6 +755,8 @@ var checkHueUserConfig = function (){
 		//while(config.hue.username == null){
 			setTimeout(hueCreateUser(), 1000);
 		//}
+	} else{
+		connect();
 	}
 	
 };
