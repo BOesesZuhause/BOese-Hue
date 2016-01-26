@@ -76,7 +76,7 @@ if (process.argv.length > 2) {
     while (i &lt; process.argv.length) {
         switch (process.argv[i]) {
             case '-h': // Help
-                console.log('BOese SmartHome Philips hue connector');
+                console.log('BOese SmartHome Philips Hue connector');
                 console.log('This is a node js based connector for the BOese SmartHome.');
                 console.log('\tnode main.js [options]');
                 console.log('If called without options it is assumed, that the distributor runs on localhost');
@@ -84,8 +84,8 @@ if (process.argv.length > 2) {
                 console.log('\t\t-u\t\tURL of distributor (e.g. 192.168.0.1, localhost)');
                 console.log('\t\t-p\t\tPort of distributor(e.g. 8081)');
                 console.log('\t\t-tls\t\tConnection to distributor uses tls encryption');
-                console.log('\t\t-hueIP\t\tThe IP-Address of the hue bridge');
-                console.log('\t\t-hueUser\tThe IP-Address of the hue bridge');
+                console.log('\t\t-hueIP\t\tThe IP-Address of the Hue bridge');
+                console.log('\t\t-hueUser\tThe IP-Address of the Hue bridge');
                 process.exit(0);
                 break;
             case '-u': // URL
@@ -123,10 +123,22 @@ if (process.argv.length > 2) {
 var distributorURI = config.distributor.tls ? 'wss://' : 'ws://';
 distributorURI += config.distributor.ipaddress + ':' + config.distributor.port + '/events/';
 
+/**
+ * @description Display the result on the console.
+ *
+ * @param {string} result - The result message.
+ */
+
+var displayResult = function(result) {
+	if(result != null){
+    	console.log(result);
+    }
+};
+
 try {
 	var devices = require('./storage/devices.json');
 }catch (e) {
-	displayResult("No old hue devices found.");
+	displayResult("No old Hue devices found.");
 	var devices = {};
 }
 
@@ -141,17 +153,7 @@ var displayError = function(err) {
 	}
 };
 
-/**
- * @description Display the result on the console.
- *
- * @param {string} result - The result message.
- */
 
-var displayResult = function(result) {
-	if(result != null){
-    	console.log(result);
-    }
-};
 
 /**
  * @description Save the devices to a JSON file.
@@ -187,9 +189,9 @@ var convertDeviceComponentIdToHueId = function(deviceComponentId, cbComponentNam
 };
 
 /**
- * @description Search the devices wich connectet with the hue bridge.
+ * @description Search the devices wich connectet with the Hue bridge.
  *
- * @return {objekt} - Returns the devices from the hue bridge.
+ * @return {objekt} - Returns the devices from the Hue bridge.
  */
 var hueGetDevices = function(cbDevices){
 	api.lights(function(err, device) {
@@ -218,10 +220,10 @@ var hueGetDevices = function(cbDevices){
 };
 
 /**
- * @description Search the components from the device wich connectet with the hue bridge by DeviceId.
+ * @description Search the components from the device wich connectet with the Hue bridge by DeviceId.
  *
  * @param {integer} deviceId - The DeviceId from the Device.
- * @return {objekt} - Returns the devices from the hue bridge.
+ * @return {objekt} - Returns the devices from the Hue bridge.
  */
 var hueGetComponents = function(deviceId, cbDevices){
 	convertDeviceIdToHueId(deviceId, function(hueId){
@@ -232,7 +234,7 @@ var hueGetComponents = function(deviceId, cbDevices){
 		   	 	for(var i = 0; i &lt; devices.Devices.length; i++){
 					if(devices.Devices[i].DeviceId == deviceId){
 						for(var j = 0; j &lt; JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents).length; j++){
-							devices.Devices[i].Components.push({"DeviceComponentId": -1, "ComponentName": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents)[j], "Description": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Description', configComponents)[j], "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Unit', configComponents)[j],  "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Value', configComponents)[j], "Actor": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Actor', configComponents)[j]});
+							devices.Devices[i].Components.push({"DeviceComponentId": -1, "ComponentName": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.ComponentName', configComponents)[j], "Description": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Description', configComponents)[j], "Unit": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Unit', configComponents)[j],  "Value": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Value', configComponents)[j], "Actor": JSPath.apply('.Devices.{.Type === "' + result.type + '"}.Components.Actor', configComponents)[j]});
 						}
 					break;
 					}
@@ -332,7 +334,7 @@ var hueSetColor = function(deviceId, color, cbDone){
 };
 
 /**
- * @description Get the color from the Hue Lamp.
+ * @description Get the color from the Hue lamp.
  *
  * @param {integer} deviceId - The DeviceId from the Device.
  * @return {integer} - The value for the color in rgb  
@@ -484,7 +486,7 @@ var boeseRequestConnection = function(cbMessageRequerstConnection) {
 			+ '"Status":0,'
 			+ '"Timestamp":' + new Date().getTime()
 			+ '},'
-			+ '"ConnectorName":"BOese-Philips-hue"';
+			+ '"ConnectorName":"BOese-Philips-Hue"';
 			if(config.distributor.Password){
 				messageRequerstConnection += ',"Password":"' + config.distributor.Password + '"}';
 			}else{
@@ -542,7 +544,7 @@ var boeseSendComponents = function(deviceId, cbMessageSendComponents){
 						+ '}');
 
 				for(var j = 0; j &lt; devices.Devices[i].Components.length; j++){
-				  	messageSendComponents.Components[j].Value = 0;
+				  	//messageSendComponents.Components[j].Value = 0;
 					messageSendComponents.Components[j].Timestamp = new Date().getTime();
 				 }
 				cbMessageSendComponents(JSON.stringify(messageSendComponents));
@@ -581,7 +583,7 @@ var connect = function(){
 	/**
  	* @description Handle the confirmConnection message.
  	*
- 	* @param {onjekt} message - The message for confirmConnection.
+ 	* @param {objekt} message - The message for confirmConnection.
  	*/
 	var confirmConnection = function(message){
 	    config.distributor.ConnectorId = message.Header.ConnectorId;
@@ -592,7 +594,7 @@ var connect = function(){
 	/**
  	* @description Handle the confirmDevices message.
  	*
- 	* @param {onjekt} message - The message for confirmDevices.
+ 	* @param {objekt} message - The message for confirmDevices.
  	*/
 	var confirmDevices = function(message){
 	    for (var i = 0; i &lt; devices.Devices.length; i++){
@@ -608,7 +610,7 @@ var connect = function(){
 	/**
  	* @description Handle the confirmDeviceComponents message.
  	*
- 	* @param {onjekt} message - The message for confirmDeviceComponents.
+ 	* @param {objekt} message - The message for confirmDeviceComponents.
  	*/
 	var confirmDeviceComponents = function(message){
 	    for (var i = 0; i &lt; devices.Devices.length; i++){
@@ -739,31 +741,36 @@ var connect = function(){
 	client.connect(distributorURI, null, null, null, config.distributor.tls ? {rejectUnauthorized : false} : {});
 };
 
+var timeoutcounter = 0;
 
 /**
 * @description Create an new user on the hue bridge.
 */
-var createHueUser = function (){
+var hueCreateUser = function (){
 	
-	var HueApi = require("node-hue-api").HueApi;
+	//var HueApi = require("node-hue-api").HueApi;
 	var hue = new HueApi();
-	displayResult("Press the button on the Philips hue bridge to create an new user.");
 	
-	// Check if user in config
-	for(var i = 0; i &lt; 60; i++){
-		try{
-				hue.createUser(config.hue.ipaddress, function(err, user) {
-				    if (err) throw err;
-				    displayResult("New user created: " + user);
-				    config.hue.username = user;
-				    saveConfig();
-				    connect();
-				});	
-		}
-		catch (e) {
-			setTimeout(callback, 100);
-		}	
+	try{
+		hue.createUser(config.hue.ipaddress, function(err, user) {
+		    if (err) {
+		    	process.stdout.write(".");
+		    	if (timeoutcounter++ &lt; 100) {
+					setTimeout(hueCreateUser(), 1000);
+				}
+		    } else {
+		    	displayResult("\nNew user created: " + user);
+			    config.hue.username = user;
+			    saveConfig();
+			    connect();
+		    }
+		});	
 	}
+	catch (e) {	
+		if (timeoutcounter++ &lt; 100) {
+			setTimeout(hueCreateUser(), 1000);
+		}
+	}	
 };
 
 /**
@@ -772,22 +779,25 @@ var createHueUser = function (){
 var checkHueUserConfig = function (){
 	// Check if user in config
 	if (config.hue.username == null){
-		createHueUser();
-	}
-	else{
+		displayResult("Press the button on the Philips Hue bridge to create an new user.");
+		//while(config.hue.username == null){
+			setTimeout(hueCreateUser(), 1000);
+		//}
+	} else{
 		connect();
 	}
+	
 };
 
 /**
-* @description Check is the hue bridge ipaddress save in the config.
+* @description Check is the Hue bridge ipaddress save in the config.
 */
 var checkHueIpAddress = function(){
 	if (config.hue.ipaddress === null){
 		//Search the ipaddress from the HUE Bridge
 		hue.nupnpSearch(function(err, result) {
     		if (err) throw err;
-    		displayResult("Hue Bridge Found: " + JSON.stringify(result));
+    		displayResult("Hue bridge found: " + JSON.stringify(result));
 
     		//Save ipadress in config
    		 	config.hue.ipaddress = result[0].ipaddress;
@@ -798,8 +808,6 @@ var checkHueIpAddress = function(){
    			//Check if Username in config.json
    			checkHueUserConfig();
 		});
-			//Check if Username in config.json
-			//checkHueUserConfig();
 	} else{
 		//Check if Username in config.json
 		checkHueUserConfig();
@@ -816,13 +824,13 @@ checkHueIpAddress();</code></pre>
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#boeseRequestConnection">boeseRequestConnection</a></li><li><a href="global.html#boeseSendComponents">boeseSendComponents</a></li><li><a href="global.html#boeseSendDevices">boeseSendDevices</a></li><li><a href="global.html#boeseSendValue">boeseSendValue</a></li><li><a href="global.html#checkHueIpAddress">checkHueIpAddress</a></li><li><a href="global.html#checkHueUserConfig">checkHueUserConfig</a></li><li><a href="global.html#connect">connect</a></li><li><a href="global.html#convertDeviceComponentIdToHueId">convertDeviceComponentIdToHueId</a></li><li><a href="global.html#convertDeviceIdToHueId">convertDeviceIdToHueId</a></li><li><a href="global.html#createHueUser">createHueUser</a></li><li><a href="global.html#displayError">displayError</a></li><li><a href="global.html#displayResult">displayResult</a></li><li><a href="global.html#getDeviceName">getDeviceName</a></li><li><a href="global.html#getValue">getValue</a></li><li><a href="global.html#hueGetBrightness">hueGetBrightness</a></li><li><a href="global.html#hueGetColor">hueGetColor</a></li><li><a href="global.html#hueGetComponents">hueGetComponents</a></li><li><a href="global.html#hueGetDevices">hueGetDevices</a></li><li><a href="global.html#hueGetSwitch">hueGetSwitch</a></li><li><a href="global.html#hueSetBrightness">hueSetBrightness</a></li><li><a href="global.html#hueSetColor">hueSetColor</a></li><li><a href="global.html#hueSetSwitch">hueSetSwitch</a></li><li><a href="global.html#saveConfig">saveConfig</a></li><li><a href="global.html#saveDevices">saveDevices</a></li><li><a href="global.html#setValue">setValue</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#boeseRequestConnection">boeseRequestConnection</a></li><li><a href="global.html#boeseSendComponents">boeseSendComponents</a></li><li><a href="global.html#boeseSendDevices">boeseSendDevices</a></li><li><a href="global.html#boeseSendValue">boeseSendValue</a></li><li><a href="global.html#checkHueIpAddress">checkHueIpAddress</a></li><li><a href="global.html#checkHueUserConfig">checkHueUserConfig</a></li><li><a href="global.html#connect">connect</a></li><li><a href="global.html#convertDeviceComponentIdToHueId">convertDeviceComponentIdToHueId</a></li><li><a href="global.html#convertDeviceIdToHueId">convertDeviceIdToHueId</a></li><li><a href="global.html#displayError">displayError</a></li><li><a href="global.html#displayResult">displayResult</a></li><li><a href="global.html#getDeviceName">getDeviceName</a></li><li><a href="global.html#getValue">getValue</a></li><li><a href="global.html#hueCreateUser">hueCreateUser</a></li><li><a href="global.html#hueGetBrightness">hueGetBrightness</a></li><li><a href="global.html#hueGetColor">hueGetColor</a></li><li><a href="global.html#hueGetComponents">hueGetComponents</a></li><li><a href="global.html#hueGetDevices">hueGetDevices</a></li><li><a href="global.html#hueGetSwitch">hueGetSwitch</a></li><li><a href="global.html#hueSetBrightness">hueSetBrightness</a></li><li><a href="global.html#hueSetColor">hueSetColor</a></li><li><a href="global.html#hueSetSwitch">hueSetSwitch</a></li><li><a href="global.html#saveConfig">saveConfig</a></li><li><a href="global.html#saveDevices">saveDevices</a></li><li><a href="global.html#setValue">setValue</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Jan 19 2016 12:27:59 GMT+0100 (CET)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Tue Jan 26 2016 10:19:02 GMT+0100 (CET)
 </footer>
 
 <script> prettyPrint(); </script>
