@@ -27,7 +27,8 @@ var hue = require("node-hue-api"),
     HueApi = hue.HueApi,
     lightState = hue.lightState;
 
-var api = new HueApi(config.hue.ipaddress, config.hue.username);
+var api = {};
+
 
 var state = lightState.create();
 
@@ -734,6 +735,7 @@ var hueCreateUser = function (){
 		    	displayResult("\nNew user created: " + user);
 			    config.hue.username = user;
 			    saveConfig();
+			    api = new HueApi(config.hue.ipaddress, config.hue.username);
 			    connect();
 		    }
 		});	
@@ -756,6 +758,7 @@ var checkHueUserConfig = function (){
 			setTimeout(hueCreateUser(), 1000);
 		//}
 	} else{
+		api = new HueApi(config.hue.ipaddress, config.hue.username);
 		connect();
 	}
 	
