@@ -339,14 +339,14 @@ var hueSetSwitch = function(deviceId, stateSwitch, cbDone){
 				});
 			});
 		}else if(stateSwitch == 0){
-			convertDeviceIdToHueId(deviceId, function(hueId){
-				api.setLightState(hueId, state.off(), function(err, result) {
-					if (err) throw err;
-					displayResult("Switch " + deviceName + " off. ");
-					cbDone(true);	
+			if(on){
+				convertDeviceIdToHueId(deviceId, function(hueId){
+					api.setLightState(hueId, state.off(), function(err, result) {
+						if (err) throw err;
+						displayResult("Switch " + deviceName + " off. ");
+						cbDone(true);			
 				});
-			})
-			
+			});			
 		}else{
 			displayError("Switch " + deviceName + ": Value not 0 or 1: " + stateSwitch);
 		}
